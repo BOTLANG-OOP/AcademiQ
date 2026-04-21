@@ -13,4 +13,7 @@ A JavaFX desktop app for tracking courses, grades, and schedules across multiple
   USE CASE DIAGRAM
   <img width="846" height="768" alt="AcademyQUseCaseDiagram" src="https://github.com/user-attachments/assets/0b8b36ad-0694-4cc8-ae8b-cd92402fdfca" />
 
-
+  <div align = 'center'>
+    CLASS DIAGRAM
+    <img src="https://github.com/BOTLANG-OOP/AcademiQ/blob/main/AcademiQClassDiagram.png" alt="Class Diagram of AcademiQ" width="846" height="768"/>
+  </div>
