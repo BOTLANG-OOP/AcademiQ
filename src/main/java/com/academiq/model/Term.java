@@ -42,9 +42,27 @@ public class Term {
         courses.remove(c);
     }
 
+    public int getTotalUnits() {
+        int total = 0;
+        for (Course course : courses) {
+            total += course.getUnits();
+        }
+        return total;
+    }
+
     public double getTermGPA() {
-        // TODO: weighted average by units, 5.0 = highest
-        return 0.0;
+        double totalPoints = 0.0;
+        int totalUnits = 0;
+        for (Course course : courses) {
+            int units = course.getUnits();
+            totalPoints += course.getFinalGrade() * units;
+            totalUnits += units;
+        }
+        if (totalUnits == 0) {
+            return 0.0;
+        }
+        // Convert 0-100 scale to 0.0-5.0 scale
+        return (totalPoints / totalUnits) / 100.0 * 5.0;
     }
 
     public List<ConflictRecord> detectConflicts() {

@@ -37,8 +37,17 @@ public class Student {
     }
 
     public double getCumulativeGPA() {
-        // TODO: weighted average across terms
-        return 0.0;
+        double weightedSum = 0.0;
+        int totalUnits = 0;
+        for (Term term : terms) {
+            int termUnits = term.getTotalUnits();
+            weightedSum += term.getTermGPA() * termUnits;
+            totalUnits += termUnits;
+        }
+        if (totalUnits == 0) {
+            return 0.0;
+        }
+        return weightedSum / totalUnits;
     }
 
     public List<ConflictRecord> getAllConflicts() {
