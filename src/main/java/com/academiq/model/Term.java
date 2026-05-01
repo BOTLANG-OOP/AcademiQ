@@ -42,16 +42,20 @@ public class Term {
         courses.remove(c);
     }
 
-    public double getTermGPA() {
-        if (courses.isEmpty()) {
-            return 0.0;
+    public int getTotalUnits() {
+        int total = 0;
+        for (Course course : courses) {
+            total += course.getUnits();
         }
+        return total;
+    }
+
+    public double getTermGPA() {
         double totalPoints = 0.0;
         int totalUnits = 0;
         for (Course course : courses) {
-            double grade = course.getGradingPolicy().computeFinalGrade(course.getAssessments());
             int units = course.getUnits();
-            totalPoints += grade * units;
+            totalPoints += course.getFinalGrade() * units;
             totalUnits += units;
         }
         if (totalUnits == 0) {
