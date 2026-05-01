@@ -37,8 +37,24 @@ public class Student {
     }
 
     public double getCumulativeGPA() {
-        // TODO: weighted average across terms
-        return 0.0;
+        if (terms.isEmpty()) {
+            return 0.0;
+        }
+        double totalPoints = 0.0;
+        int totalUnits = 0;
+        for (Term term : terms) {
+            for (Course course : term.getCourses()) {
+                double grade = course.getGradingPolicy().computeFinalGrade(course.getAssessments());
+                int units = course.getUnits();
+                totalPoints += grade * units;
+                totalUnits += units;
+            }
+        }
+        if (totalUnits == 0) {
+            return 0.0;
+        }
+        // Convert 0-100 scale to 0.0-5.0 scale
+        return (totalPoints / totalUnits) / 100.0 * 5.0;
     }
 
     public List<ConflictRecord> getAllConflicts() {
