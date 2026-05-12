@@ -66,7 +66,20 @@ public class Term {
     }
 
     public List<ConflictRecord> detectConflicts() {
-        // TODO: cross-compare all course time slots
-        return Collections.emptyList();
+        List<ConflictRecord> conflicts = new ArrayList<>();
+        for (int i = 0; i < courses.size(); i++) {
+            Course courseA = courses.get(i);
+            for (int j = i + 1; j < courses.size(); j++) {
+                Course courseB = courses.get(j);
+                for (TimeSlot slotA : courseA.getTimeSlots()) {
+                    for (TimeSlot slotB : courseB.getTimeSlots()) {
+                        if (slotA.overlapsWith(slotB)) {
+                            conflicts.add(new ConflictRecord(courseA, courseB, slotA, slotB));
+                        }
+                    }
+                }
+            }
+        }
+        return conflicts;
     }
 }
