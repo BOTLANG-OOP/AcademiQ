@@ -8,6 +8,10 @@ import com.academiq.model.Student;
 import com.academiq.model.Term;
 import com.academiq.model.TimeSlot;
 
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -27,10 +31,17 @@ import java.util.UUID;
  * GradingPolicy already demonstrates Strategy pattern;
  * a DataStore interface with one implementation would be a code smell.
  */
+
 public class SqliteDataStore implements AutoCloseable {
 
     private static final String DB_FILE = "academiq.db";
     private Connection connection;
+
+    //Debounce support
+    private final ScheduledExecutorService debounceExecutorService = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> pendingWrite;
+    private volatile Student pendingStudent;
+    /*****/
 
     public SqliteDataStore() {
         this(DB_FILE);
@@ -46,6 +57,19 @@ public class SqliteDataStore implements AutoCloseable {
             }
 
             createTables();
+
+            //Debounce Feature
+            final SqliteDataStore self = this;
+            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Student s = self.pendingStudent;
+                    if (s != null) {
+                        try { self.save(s); } catch (Exception ignored) {}
+                    }
+                    self.debounceExecutorService.shutdownNow();
+                }
+            }, "sqlite-shutdown-flush"));
 
         } catch (SQLException e) {
             throw new RuntimeException("Database connection error: " + e.getMessage(), e);
@@ -305,6 +329,23 @@ public class SqliteDataStore implements AutoCloseable {
             } catch (SQLException ignore) {
             }
         }
+    }
+    public synchronized void scheduleSave(Student student) {
+        this.pendingStudent = student;
+
+        if (pendingWrite != null && !pendingWrite.isDone()) {
+            pendingWrite.cancel(false);
+        }
+
+        final SqliteDataStore self = this;
+        pendingWrite = debounceExecutorService.schedule(new Runnable() {
+            @Override
+            public void run() {
+                Student s = self.pendingStudent;
+                if (s != null) 
+                    self.save(s);
+                }
+        }, 500, TimeUnit.MILLISECONDS);
     }
 
     private static String deterministicId(String parentId, int childIndex) {
