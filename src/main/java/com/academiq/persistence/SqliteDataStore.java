@@ -273,7 +273,7 @@ public class SqliteDataStore implements AutoCloseable {
         }
     }
 
-    public void save(Student student) {
+    public synchronized void save(Student student) {
         if (connection == null) {
             throw new IllegalStateException("Save error: no database connection.");
         }
@@ -482,7 +482,7 @@ public class SqliteDataStore implements AutoCloseable {
         executeDelete("DELETE FROM time_slots WHERE time_slot_id = ?", timeSlotId);
     }
 
-    private void executeDelete(String sql, String id) {
+    private synchronized void executeDelete(String sql, String id) {
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, id);
             ps.executeUpdate();
