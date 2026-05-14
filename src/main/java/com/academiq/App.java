@@ -1,5 +1,7 @@
 package com.academiq;
 
+import com.academiq.persistence.SqliteDataStore;
+
 import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -29,6 +31,16 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) {
+
+        //Error handling for DB
+        try{
+            SqliteDataStore dataStore = new SqliteDataStore();
+        }
+        catch(RuntimeException e){
+            showDbErrorDialog(stage, e);
+            return;
+        }
+
         courseListPane = createCourseListPane();
         gradeEntryPane = createGradeEntryPane();
         dashboardPane = createDashboardPane();
@@ -49,6 +61,35 @@ public class App extends Application {
         navigateTo("courses");
 
         stage.setTitle("AcademiQ");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    private void showDbErrorDialog(Stage stage, Exception e){
+        Label title = new Label("Database Error");
+        title.getStyleClass().add("title");
+
+        Label message = new Label("AcademIQ could not open the database file.\nIt may be corrupted.");
+        message.getStyleClass().add("subtitle");
+
+        Button startFresh = new Button("Start Fresh");
+        startFresh.setOnAction(ev -> {
+            new java.io.File("academiq.db").delete();
+            try{
+                start(stage);
+            }
+            catch(Exception er){
+                System.err.println("Failed to restart: "+er.getMessage());
+            }
+        });
+        Button exit = new Button("Exit");
+        exit.setOnAction(ev -> stage.close());
+
+        VBox box = new VBox(10, title, message, startFresh, exit);
+        box.setAlignment(Pos.CENTER);
+
+        Scene scene = new Scene(box, 400, 250);
+        scene.getStylesheets().add(getClass().getResource("styles.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
