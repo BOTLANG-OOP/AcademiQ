@@ -8,6 +8,7 @@ import com.academiq.model.Student;
 import com.academiq.model.Term;
 import com.academiq.model.TimeSlot;
 
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -37,11 +38,14 @@ public class SqliteDataStore implements AutoCloseable {
     private static final String DB_FILE = "academiq.db";
     private Connection connection;
 
-    //Debounce support
-    private final ScheduledExecutorService debounceExecutorService = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService debounceExecutorService =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "sqlite-debounce");
+                t.setDaemon(true);
+                return t;
+            });
     private ScheduledFuture<?> pendingWrite;
     private volatile Student pendingStudent;
-    /*****/
 
     public SqliteDataStore() {
         this(DB_FILE);
@@ -58,18 +62,7 @@ public class SqliteDataStore implements AutoCloseable {
 
             createTables();
 
-            //Debounce Feature
-            final SqliteDataStore self = this;
-            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    Student s = self.pendingStudent;
-                    if (s != null) {
-                        try { self.save(s); } catch (Exception ignored) {}
-                    }
-                    self.debounceExecutorService.shutdownNow();
-                }
-            }, "sqlite-shutdown-flush"));
+            Runtime.getRuntime().addShutdownHook(new Thread(this::close, "sqlite-shutdown-flush"));
 
         } catch (SQLException e) {
             throw new RuntimeException("Database connection error: " + e.getMessage(), e);
@@ -337,15 +330,18 @@ public class SqliteDataStore implements AutoCloseable {
             pendingWrite.cancel(false);
         }
 
-        final SqliteDataStore self = this;
-        pendingWrite = debounceExecutorService.schedule(new Runnable() {
-            @Override
-            public void run() {
-                Student s = self.pendingStudent;
-                if (s != null) 
-                    self.save(s);
-                }
-        }, 500, TimeUnit.MILLISECONDS);
+        pendingWrite = debounceExecutorService.schedule(this::flushPending, 500, TimeUnit.MILLISECONDS);
+    }
+
+    private synchronized void flushPending() {
+        Student s = pendingStudent;
+        pendingStudent = null;
+        if (s == null || connection == null) return;
+        try {
+            save(s);
+        } catch (RuntimeException e) {
+            System.err.println("Debounced save failed: " + e.getMessage());
+        }
     }
 
     private static String deterministicId(String parentId, int childIndex) {
@@ -504,7 +500,17 @@ public class SqliteDataStore implements AutoCloseable {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
+        if (pendingWrite != null) {
+            pendingWrite.cancel(false);
+        }
+        flushPending();
+        debounceExecutorService.shutdown();
+        try {
+            debounceExecutorService.awaitTermination(2, TimeUnit.SECONDS);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
         try{
             if(connection != null && !connection.isClosed()){
                 connection.close();
