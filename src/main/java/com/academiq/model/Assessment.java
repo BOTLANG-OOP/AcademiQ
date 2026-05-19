@@ -3,11 +3,14 @@ package com.academiq.model;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+
 public class Assessment {
 
     private final String title;
     private final String category;
-    private double score;
+    private final DoubleProperty score;
     private final double maxScore;
     private final double weight;
     private final LocalDate date;
@@ -15,7 +18,7 @@ public class Assessment {
     public Assessment(String title, String category, double score, double maxScore, double weight, LocalDate date) {
         this.title = title;
         this.category = category;
-        this.score = score;
+        this.score = new SimpleDoubleProperty(score);
         this.maxScore = maxScore;
         this.weight = weight;
         this.date = date;
@@ -30,6 +33,14 @@ public class Assessment {
     }
 
     public double getScore() {
+        return score.get();
+    }
+
+    public void setScore(double score) {
+        this.score.set(score);
+    }
+
+    public DoubleProperty scoreProperty() {
         return score;
     }
 
@@ -49,7 +60,7 @@ public class Assessment {
         if (maxScore == 0) {
             return 0.0;
         }
-        return score / maxScore * 100;
+        return score.get() / maxScore * 100;
     }
 
     public double getWeightedScore() {
@@ -57,7 +68,7 @@ public class Assessment {
     }
 
     public boolean isGraded() {
-        return score >= 0;
+        return getScore() >= 0;
     }
 
     @Override
