@@ -24,10 +24,13 @@ public class Course {
     private final ChangeListener<Number> assessmentScoreListener;
 
     public Course(String name, String code, int units, GradingPolicy gradingPolicy) {
+        if (gradingPolicy == null) {
+            throw new IllegalArgumentException("GradingPolicy cannot be null");
+        }
         this.name = name;
         this.code = code;
         this.units = units;
-        this.gradingPolicy = new SimpleObjectProperty<>(Objects.requireNonNull(gradingPolicy, "gradingPolicy"));
+        this.gradingPolicy = new SimpleObjectProperty<>(gradingPolicy);
         this.assessments = FXCollections.observableArrayList();
         this.timeSlots = FXCollections.observableArrayList();
         this.finalGrade = new SimpleDoubleProperty();
