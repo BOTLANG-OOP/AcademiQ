@@ -16,6 +16,9 @@ public class CurvedGrading implements GradingPolicy {
 
     @Override
     public double computeFinalGrade(List<Assessment> assessments) {
+        if (assessments == null || assessments.isEmpty()) {
+            return 0.0;
+        }
         double base = basePolicy.computeFinalGrade(assessments);
         double curved = base + curveAmount;
         if (curved > 100.0) return 100.0;
@@ -37,6 +40,15 @@ public class CurvedGrading implements GradingPolicy {
 
     @Override
     public double projectNeeded(List<Assessment> assessments, double targetGrade) {
+        if (assessments == null || assessments.isEmpty()) {
+            return -1.0;
+        }
+        if (targetGrade > 100.0) {
+            return -1.0;
+        }
+        if (targetGrade < 0.0) {
+            return 0.0;
+        }
         double adjustedTarget = targetGrade - curveAmount;
         if (adjustedTarget < 0.0) adjustedTarget = 0.0;
         return basePolicy.projectNeeded(assessments, adjustedTarget);

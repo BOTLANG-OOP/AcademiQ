@@ -189,8 +189,8 @@ class CurvedGradingEdgeCaseTest {
         CurvedGrading curved = new CurvedGrading(10.0, base);
         List<Assessment> empty = new ArrayList<>();
 
-        // base returns 0.0 + 10.0 curve = 10.0 (in 0-100 range)
-        assertEquals(10.0, curved.computeFinalGrade(empty), DELTA);
+        // Empty assessment list: policies return safe defaults (0.0) without applying the curve.
+        assertEquals(0.0, curved.computeFinalGrade(empty), DELTA);
 
         // projectNeeded must not throw.
         assertDoesNotThrow(() -> curved.projectNeeded(empty, 80.0));
