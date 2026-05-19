@@ -1,26 +1,52 @@
 package com.academiq.model;
 
 import com.academiq.grading.GradingPolicy;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
 
-import java.util.ArrayList;
-import java.util.List;
+// import java.util.List; //unused import, can be removed later
 
 public class Course {
 
     private final String name;
     private final String code;
     private final int units;
-    private final List<Assessment> assessments;
-    private final List<TimeSlot> timeSlots;
-    private GradingPolicy gradingPolicy;
+    private final ObservableList<Assessment> assessments;
+    private final ObservableList<TimeSlot> timeSlots;
+    private final ObjectProperty<GradingPolicy> gradingPolicy;
+    private final DoubleProperty finalGrade;
+    private final ChangeListener<Number> assessmentScoreListener;
 
     public Course(String name, String code, int units, GradingPolicy gradingPolicy) {
         this.name = name;
         this.code = code;
         this.units = units;
-        this.gradingPolicy = gradingPolicy;
-        this.assessments = new ArrayList<>();
-        this.timeSlots = new ArrayList<>();
+        this.gradingPolicy = new SimpleObjectProperty<>(gradingPolicy);
+        this.assessments = FXCollections.observableArrayList();
+        this.timeSlots = FXCollections.observableArrayList();
+        this.finalGrade = new SimpleDoubleProperty();
+        this.assessmentScoreListener = (observable, oldValue, newValue) -> recomputeFinalGrade();
+
+        this.assessments.addListener((ListChangeListener<Assessment>) change -> {
+            while (change.next()) {
+                if (change.wasAdded()) {
+                    change.getAddedSubList().forEach(this::attachAssessmentListener);
+                }
+                if (change.wasRemoved()) {
+                    change.getRemoved().forEach(this::detachAssessmentListener);
+                }
+            }
+            recomputeFinalGrade();
+        });
+
+        this.gradingPolicy.addListener((observable, oldPolicy, newPolicy) -> recomputeFinalGrade());
+        recomputeFinalGrade();
     }
 
     public String getName() {
@@ -35,20 +61,20 @@ public class Course {
         return units;
     }
 
-    public List<Assessment> getAssessments() {
+    public ObservableList<Assessment> getAssessments() {
         return assessments;
     }
 
-    public List<TimeSlot> getTimeSlots() {
+    public ObservableList<TimeSlot> getTimeSlots() {
         return timeSlots;
     }
 
     public GradingPolicy getGradingPolicy() {
-        return gradingPolicy;
+        return gradingPolicy.get();
     }
 
     public void setGradingPolicy(GradingPolicy policy) {
-        this.gradingPolicy = policy;
+        this.gradingPolicy.set(policy);
     }
 
     public void addAssessment(Assessment a) {
@@ -64,14 +90,31 @@ public class Course {
     }
 
     public double getFinalGrade() {
-        return gradingPolicy.computeFinalGrade(assessments);
+        return finalGrade.get();
+    }
+
+    public DoubleProperty finalGradeProperty() {
+        return finalGrade;
     }
 
     public String getGradeBreakdown() {
-        return gradingPolicy.getBreakdown(assessments);
+        return gradingPolicy.get().getBreakdown(assessments);
     }
 
     public double whatDoINeed(double targetGrade) {
-        return gradingPolicy.projectNeeded(assessments, targetGrade);
+        return gradingPolicy.get().projectNeeded(assessments, targetGrade);
+    }
+
+    private void recomputeFinalGrade() {
+        GradingPolicy policy = gradingPolicy.get();
+        finalGrade.set(policy == null ? 0.0 : policy.computeFinalGrade(assessments));
+    }
+
+    private void attachAssessmentListener(Assessment assessment) {
+        assessment.scoreProperty().addListener(assessmentScoreListener);
+    }
+
+    private void detachAssessmentListener(Assessment assessment) {
+        assessment.scoreProperty().removeListener(assessmentScoreListener);
     }
 }
