@@ -10,7 +10,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 
-// import java.util.List; //unused import, can be removed later
+import java.util.Objects;
 
 public class Course {
 
@@ -27,7 +27,7 @@ public class Course {
         this.name = name;
         this.code = code;
         this.units = units;
-        this.gradingPolicy = new SimpleObjectProperty<>(gradingPolicy);
+        this.gradingPolicy = new SimpleObjectProperty<>(Objects.requireNonNull(gradingPolicy, "gradingPolicy"));
         this.assessments = FXCollections.observableArrayList();
         this.timeSlots = FXCollections.observableArrayList();
         this.finalGrade = new SimpleDoubleProperty();
@@ -74,7 +74,7 @@ public class Course {
     }
 
     public void setGradingPolicy(GradingPolicy policy) {
-        this.gradingPolicy.set(policy);
+        this.gradingPolicy.set(Objects.requireNonNull(policy, "policy"));
     }
 
     public void addAssessment(Assessment a) {
@@ -106,8 +106,7 @@ public class Course {
     }
 
     private void recomputeFinalGrade() {
-        GradingPolicy policy = gradingPolicy.get();
-        finalGrade.set(policy == null ? 0.0 : policy.computeFinalGrade(assessments));
+        finalGrade.set(gradingPolicy.get().computeFinalGrade(assessments));
     }
 
     private void attachAssessmentListener(Assessment assessment) {
