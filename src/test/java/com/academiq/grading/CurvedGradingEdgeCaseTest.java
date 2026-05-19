@@ -77,6 +77,18 @@ class CurvedGradingEdgeCaseTest {
     }
 
     @Test
+    void positiveCurveNormalCase() {
+        // Base = 80, curve +5 → 85, no cap/floor involved.
+        PointsBasedGrading base = new PointsBasedGrading(100);
+        List<Assessment> assessments = Collections.singletonList(
+                graded("Only", "X", 80, 100, 1.0)
+        );
+        CurvedGrading curved = new CurvedGrading(5.0, base);
+
+        assertEquals(85.0, curved.computeFinalGrade(assessments), DELTA);
+    }
+
+    @Test
     void curveCapAt100() {
         // Base PointsBasedGrading returns 97.0 (97/100).
         PointsBasedGrading base = new PointsBasedGrading(100);
