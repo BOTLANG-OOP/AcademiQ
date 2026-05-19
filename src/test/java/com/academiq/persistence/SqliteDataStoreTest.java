@@ -23,6 +23,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -277,5 +279,61 @@ class SqliteDataStoreTest {
         assertTrue(baseField.get(policy) instanceof WeightedGrading);
 
         assertEquals(originalGrade, lc.getFinalGrade(), 1e-9);
+    }
+
+    @Test
+    void testGpaConsistencyRoundTrip() {
+        Student s = buildSampleStudent();
+
+        // add a second term to exercise cumulative GPA calculation
+        Term t2 = new Term("Spring 2026", 2026, "Spring");
+        WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
+        Course c = new Course("Eng", "ENG101", 3, wg);
+        c.addAssessment(new Assessment("Mid", "Exams", 88.0, 100.0, 1.0, LocalDate.of(2026, 3, 1)));
+        t2.addCourse(c);
+        s.addTerm(t2);
+
+        // capture GPAs before save
+        List<Double> termGpasBefore = new ArrayList<>();
+        Map<String, Double> courseGradesBefore = new HashMap<>();
+        for (int ti = 0; ti < s.getTerms().size(); ti++) {
+            Term term = s.getTerms().get(ti);
+            termGpasBefore.add(term.getTermGPA());
+            for (Course co : term.getCourses()) {
+                courseGradesBefore.put(ti + ":" + co.getCode(), co.getFinalGrade());
+            }
+        }
+        double cumulativeBefore = s.getCumulativeGPA();
+
+        store.save(s);
+
+        Student loaded = store.loadStudent(s.getId());
+        assertNotNull(loaded);
+
+        // capture GPAs after load
+        List<Double> termGpasAfter = new ArrayList<>();
+        Map<String, Double> courseGradesAfter = new HashMap<>();
+        for (int ti = 0; ti < loaded.getTerms().size(); ti++) {
+            Term term = loaded.getTerms().get(ti);
+            termGpasAfter.add(term.getTermGPA());
+            for (Course co : term.getCourses()) {
+                courseGradesAfter.put(ti + ":" + co.getCode(), co.getFinalGrade());
+            }
+        }
+        double cumulativeAfter = loaded.getCumulativeGPA();
+
+        assertEquals(termGpasBefore.size(), termGpasAfter.size());
+        assertEquals(courseGradesBefore.size(), courseGradesAfter.size());
+
+        for (int i = 0; i < termGpasBefore.size(); i++) {
+            assertEquals(termGpasBefore.get(i), termGpasAfter.get(i), 1e-9);
+        }
+
+        for (String k : courseGradesBefore.keySet()) {
+            assertTrue(courseGradesAfter.containsKey(k));
+            assertEquals(courseGradesBefore.get(k), courseGradesAfter.get(k), 1e-9);
+        }
+
+        assertEquals(cumulativeBefore, cumulativeAfter, 1e-9);
     }
 }
