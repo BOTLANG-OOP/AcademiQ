@@ -31,6 +31,46 @@ class WeightedGradingTest {
         return m;
     }
 
+    private static Map<String, Double> weights(String k1, double v1, String k2, double v2, String k3, double v3) {
+        Map<String, Double> m = new LinkedHashMap<>();
+        m.put(k1, v1);
+        m.put(k2, v2);
+        m.put(k3, v3);
+        return m;
+    }
+
+    @Test
+    void threeCategoriesWeightedAverage() {
+        WeightedGrading wg = new WeightedGrading(weights("Exams", 0.50, "Homework", 0.30, "Quizzes", 0.20));
+        List<Assessment> assessments = Arrays.asList(
+                new Assessment("Midterm", "Exams", 80, 100, 1.0, D),
+                new Assessment("HW1", "Homework", 90, 100, 1.0, D),
+                new Assessment("Quiz1", "Quizzes", 70, 100, 1.0, D)
+        );
+        // 0.5*80 + 0.3*90 + 0.2*70 = 40 + 27 + 14 = 81
+        assertEquals(81.0, wg.computeFinalGrade(assessments), DELTA);
+    }
+
+    @Test
+    void allPerfectScoresReturnsHundred() {
+        WeightedGrading wg = new WeightedGrading(weights("Exams", 0.60, "Homework", 0.40));
+        List<Assessment> assessments = Arrays.asList(
+                new Assessment("Midterm", "Exams", 100, 100, 1.0, D),
+                new Assessment("HW1", "Homework", 100, 100, 1.0, D)
+        );
+        assertEquals(100.0, wg.computeFinalGrade(assessments), DELTA);
+    }
+
+    @Test
+    void allCategoriesUngradedReturnsZero() {
+        WeightedGrading wg = new WeightedGrading(weights("Exams", 0.50, "Homework", 0.50));
+        List<Assessment> assessments = Arrays.asList(
+                new Assessment("Midterm", "Exams", -1, 100, 1.0, D),
+                new Assessment("HW1", "Homework", -1, 100, 1.0, D)
+        );
+        assertEquals(0.0, wg.computeFinalGrade(assessments), DELTA);
+    }
+
     @Test
     void normalWeightedCalculation() {
         WeightedGrading wg = new WeightedGrading(weights("Exams", 0.60, "Homework", 0.40));
