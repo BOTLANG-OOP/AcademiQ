@@ -285,7 +285,6 @@ class SqliteDataStoreTest {
     void testGpaConsistencyRoundTrip() {
         Student s = buildSampleStudent();
 
-        // add a second term to exercise cumulative GPA calculation
         Term t2 = new Term("Spring 2026", 2026, "Spring");
         WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
         Course c = new Course("Eng", "ENG101", 3, wg);
@@ -293,7 +292,7 @@ class SqliteDataStoreTest {
         t2.addCourse(c);
         s.addTerm(t2);
 
-        // capture GPAs before save
+    
         List<Double> termGpasBefore = new ArrayList<>();
         Map<String, Double> courseGradesBefore = new HashMap<>();
         for (int ti = 0; ti < s.getTerms().size(); ti++) {
