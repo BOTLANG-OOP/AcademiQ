@@ -390,3 +390,43 @@
     -fx-text-fill: #C62828;
     -fx-padding: 4 0 0 0;
 }
+
+/* Conflict panel */
+.conflict-panel {
+    -fx-padding: 12 16 12 16;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-width: 1;
+}
+
+.conflict-panel-ok {
+    -fx-background-color: rgba(46, 125, 50, 0.10);
+    -fx-border-color: #2E7D32;
+}
+
+.conflict-panel-danger {
+    -fx-background-color: rgba(198, 40, 40, 0.10);
+    -fx-border-color: #C62828;
+}
+
+.conflict-ok-text {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #2E7D32;
+}
+
+.conflict-heading {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #C62828;
+    -fx-padding: 0 0 4 0;
+}
+
+.conflict-line {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+    -fx-text-fill: #C62828;
+}
