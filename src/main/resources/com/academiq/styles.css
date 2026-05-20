@@ -351,3 +351,42 @@
     -fx-text-fill: #C62828;
     -fx-background-color: rgba(198, 40, 40, 0.10);
 }
+
+/* Schedule view */
+.schedule-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0;
+}
+
+.schedule-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.schedule-sections {
+    -fx-padding: 0 4 0 0;
+}
+
+.schedule-course-section {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 20;
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 20;
+    -fx-border-width: 1;
+    -fx-padding: 16 18 16 18;
+}
+
+.schedule-course-title {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #1D1B20;
+}
+
+.timeslot-error {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #C62828;
+    -fx-padding: 4 0 0 0;
+}
