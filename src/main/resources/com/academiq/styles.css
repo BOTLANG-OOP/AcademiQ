@@ -1,4 +1,49 @@
-/* Sidebar */
+/* =========================================================================
+   AcademiQ — Global styles
+   Source of truth: docs/design-tokens.md (extracted from Figma 2026-05-20)
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Root tokens — looked-up colors and global typography.
+   Reference these via -color-* instead of hard-coding hex elsewhere.
+   ------------------------------------------------------------------------- */
+.root {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+
+    /* Brand */
+    -color-primary:        #89343B;
+    -color-primary-hover:  derive(#89343B, -8%);
+    -color-primary-soft:   rgba(137, 52, 59, 0.10);
+    -color-primary-tint:   rgba(137, 52, 59, 0.04);
+
+    /* Surfaces */
+    -color-surface:        #FFFFFF;
+    -color-background:     #F5F5F5;
+    -color-row-alt:        #FAFAFA;
+    -color-row-hover:      #F5F5F5;
+
+    /* Text */
+    -color-text:           #1D1B20;
+    -color-text-secondary: #828282;
+    -color-text-on-primary:#FFFFFF;
+
+    /* Borders / dividers */
+    -color-border:         #E0E0E0;
+    -color-divider:        #F0F0F0;
+
+    /* Status */
+    -color-success:        #2E7D32;
+    -color-success-soft:   rgba(46, 125, 50, 0.10);
+    -color-warning:        #ED6C02;
+    -color-warning-soft:   rgba(237, 108, 2, 0.12);
+    -color-danger:         #C62828;
+    -color-danger-soft:    rgba(198, 40, 40, 0.10);
+}
+
+/* -------------------------------------------------------------------------
+   Sidebar
+   ------------------------------------------------------------------------- */
 .sidebar {
     -fx-background-color: #2B2D42;
     -fx-pref-width: 220;
@@ -18,16 +63,17 @@
     -fx-padding: 10 20;
 }
 
-/* Nav buttons */
 .nav-button {
     -fx-background-color: transparent;
-    -fx-text-fill: #8D99AE;
+    -fx-text-fill: #B8BCC9;
     -fx-font-size: 14px;
+    -fx-font-weight: 500;
     -fx-padding: 12 20;
     -fx-alignment: CENTER_LEFT;
     -fx-max-width: infinity;
     -fx-cursor: hand;
     -fx-background-radius: 0;
+    -fx-border-width: 0;
 }
 
 .nav-button:hover {
@@ -35,37 +81,198 @@
     -fx-text-fill: white;
 }
 
-.nav-button.nav-active {
-    -fx-background-color: rgba(255, 255, 255, 0.12);
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
+.nav-button:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.16);
 }
 
-/* Content area */
+.nav-button.nav-active {
+    -fx-background-color: rgba(255, 255, 255, 0.14);
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+}
+
+/* -------------------------------------------------------------------------
+   Content area
+   ------------------------------------------------------------------------- */
 .content-area {
-    -fx-background-color: #F8F9FA;
+    -fx-background-color: -color-background;
     -fx-padding: 30;
 }
 
-/* Placeholder labels */
+/* -------------------------------------------------------------------------
+   Typography
+   ------------------------------------------------------------------------- */
 .placeholder-title {
     -fx-font-size: 24px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #2B2D42;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-text;
 }
 
 .placeholder-subtitle {
     -fx-font-size: 14px;
-    -fx-text-fill: #8D99AE;
+    -fx-text-fill: -color-text-secondary;
     -fx-padding: 8 0 0 0;
 }
 
-/* Section header (Heading/H5 SemiBold) */
 .section-header {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 24px;
     -fx-font-weight: 600;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
+}
+
+.empty-prompt {
+    -fx-font-size: 16px;
+    -fx-text-fill: -color-text-secondary;
+    -fx-padding: 24 0 0 0;
+}
+
+/* -------------------------------------------------------------------------
+   Buttons (aq-button base + variants)
+   Per design tokens: 20px radius, primary maroon, secondary outlined, danger red.
+   ------------------------------------------------------------------------- */
+.aq-button {
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-padding: 10 18 10 18;
+    -fx-cursor: hand;
+}
+
+.aq-button:focused {
+    -fx-effect: dropshadow(gaussian, rgba(137, 52, 59, 0.35), 6, 0, 0, 0);
+}
+
+.aq-button-primary {
+    -fx-background-color: -color-primary;
+    -fx-text-fill: -color-text-on-primary;
+}
+
+.aq-button-primary:hover {
+    -fx-background-color: -color-primary-hover;
+}
+
+.aq-button-primary:pressed {
+    -fx-background-color: derive(-color-primary, -14%);
+}
+
+.aq-button-secondary {
+    -fx-background-color: -color-surface;
+    -fx-text-fill: -color-primary;
+    -fx-border-color: -color-primary;
+    -fx-border-width: 1;
+}
+
+.aq-button-secondary:hover {
+    -fx-background-color: -color-primary-soft;
+}
+
+.aq-button-secondary:pressed {
+    -fx-background-color: rgba(137, 52, 59, 0.16);
+}
+
+.aq-button-danger {
+    -fx-background-color: -color-danger;
+    -fx-text-fill: -color-text-on-primary;
+}
+
+.aq-button-danger:hover {
+    -fx-background-color: derive(-color-danger, -8%);
+}
+
+.aq-button-danger:pressed {
+    -fx-background-color: derive(-color-danger, -14%);
+}
+
+.aq-button:disabled {
+    -fx-opacity: 0.5;
+}
+
+/* -------------------------------------------------------------------------
+   Form controls — TextField, ComboBox, Spinner.
+   ------------------------------------------------------------------------- */
+.text-field,
+.combo-box-base,
+.spinner {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-font-size: 14px;
+    -fx-text-fill: -color-text;
+}
+
+.text-field {
+    -fx-padding: 6 10 6 10;
+    -fx-pref-height: 32;
+}
+
+.text-field:focused,
+.combo-box-base:focused,
+.spinner:focused {
+    -fx-border-color: -color-primary;
+    -fx-border-width: 2;
+}
+
+.combo-box-base {
+    -fx-pref-height: 32;
+}
+
+.combo-box-base .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 8 0 4;
+}
+
+.combo-box-base .arrow {
+    -fx-background-color: -color-text-secondary;
+}
+
+.combo-box .list-cell {
+    -fx-padding: 6 10 6 10;
+    -fx-text-fill: -color-text;
+    -fx-background-color: transparent;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 12, 0, 0, 4);
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: -color-row-hover;
+}
+
+.combo-box-popup .list-view .list-cell:filled:selected {
+    -fx-background-color: -color-primary-soft;
+    -fx-text-fill: -color-text;
+}
+
+.spinner {
+    -fx-pref-height: 32;
+}
+
+.spinner .text-field {
+    -fx-border-width: 0;
+    -fx-background-color: transparent;
+}
+
+.spinner .increment-arrow-button,
+.spinner .decrement-arrow-button {
+    -fx-background-color: transparent;
+}
+
+.spinner .increment-arrow-button:hover,
+.spinner .decrement-arrow-button:hover {
+    -fx-background-color: -color-row-hover;
+}
+
+.spinner .increment-arrow,
+.spinner .decrement-arrow {
+    -fx-background-color: -color-text-secondary;
 }
 
 /* Term management controls */
@@ -74,180 +281,156 @@
 }
 
 .term-combo {
-    -fx-background-radius: 8;
-    -fx-border-color: #E0E0E0;
-    -fx-border-radius: 8;
     -fx-pref-width: 260;
 }
 
-/* Buttons (per design tokens) */
-.aq-button {
-    -fx-font-family: "Inter", "Segoe UI", "System";
-    -fx-font-size: 14px;
-    -fx-font-weight: 600;
+/* -------------------------------------------------------------------------
+   Cards — shared pattern for any white panel that needs separation.
+   ------------------------------------------------------------------------- */
+.aq-card,
+.breakdown-card,
+.schedule-course-section,
+.dashboard-cumulative-card,
+.dashboard-term-card,
+.dashboard-course-card {
+    -fx-background-color: -color-surface;
     -fx-background-radius: 20;
-    -fx-padding: 10 18 10 18;
-    -fx-cursor: hand;
-}
-
-.aq-button-primary {
-    -fx-background-color: #89343B;
-    -fx-text-fill: white;
-}
-
-.aq-button-primary:hover {
-    -fx-background-color: derive(#89343B, -8%);
-}
-
-.aq-button-secondary {
-    -fx-background-color: #FFFFFF;
-    -fx-text-fill: #89343B;
-    -fx-border-color: #89343B;
+    -fx-border-color: -color-border;
     -fx-border-radius: 20;
     -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2);
 }
 
-.aq-button-secondary:hover {
-    -fx-background-color: rgba(137, 52, 59, 0.08);
+.breakdown-card,
+.schedule-course-section {
+    -fx-padding: 16 18 16 18;
 }
 
-.aq-button-danger {
-    -fx-background-color: #C62828;
-    -fx-text-fill: white;
+.aq-card {
+    -fx-padding: 16;
 }
 
-.aq-button-danger:hover {
-    -fx-background-color: derive(#C62828, -8%);
-}
-
-.aq-button:disabled {
-    -fx-opacity: 0.5;
-}
-
-/* Empty state prompt */
-.empty-prompt {
-    -fx-font-family: "Inter", "Segoe UI", "System";
-    -fx-font-size: 16px;
-    -fx-text-fill: #828282;
-    -fx-padding: 24 0 0 0;
-}
-
-.courses-body {
-    -fx-alignment: TOP_LEFT;
-}
-
-/* Course table (per design tokens — Tables section) */
+/* -------------------------------------------------------------------------
+   Table (course table base — applies to any .course-table TableView)
+   ------------------------------------------------------------------------- */
 .course-table {
-    -fx-background-color: #FFFFFF;
+    -fx-background-color: -color-surface;
     -fx-background-radius: 20;
-    -fx-border-color: #E0E0E0;
+    -fx-border-color: -color-border;
     -fx-border-radius: 20;
+    -fx-border-width: 1;
     -fx-padding: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2);
 }
 
 .course-table .column-header-background {
-    -fx-background-color: #FFFFFF;
+    -fx-background-color: -color-surface;
     -fx-background-radius: 20 20 0 0;
 }
 
 .course-table .column-header,
 .course-table .filler {
     -fx-background-color: transparent;
-    -fx-border-color: transparent transparent #E0E0E0 transparent;
+    -fx-border-color: transparent transparent -color-border transparent;
     -fx-size: 44;
 }
 
 .course-table .column-header .label {
-    -fx-font-family: "Inter", "Segoe UI", "System";
-    -fx-font-size: 16px;
-    -fx-text-fill: #828282;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-text-secondary;
     -fx-alignment: CENTER_LEFT;
     -fx-padding: 0 16 0 16;
 }
 
 .course-table .table-row-cell {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: transparent transparent #F5F5F5 transparent;
+    -fx-background-color: -color-surface;
+    -fx-border-color: transparent transparent -color-divider transparent;
     -fx-cell-size: 44;
 }
 
+.course-table .table-row-cell:odd {
+    -fx-background-color: -color-row-alt;
+}
+
 .course-table .table-row-cell:hover {
-    -fx-background-color: #F5F5F5;
+    -fx-background-color: -color-row-hover;
 }
 
 .course-table .table-row-cell:selected {
-    -fx-background-color: rgba(137, 52, 59, 0.10);
+    -fx-background-color: -color-primary-soft;
+}
+
+.course-table .table-row-cell:selected .table-cell {
+    -fx-text-fill: -color-text;
 }
 
 .course-table .table-cell {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
     -fx-padding: 12 16 12 16;
     -fx-border-color: transparent;
 }
 
 .course-table .placeholder .label {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 16px;
-    -fx-text-fill: #828282;
+    -fx-text-fill: -color-text-secondary;
 }
 
 .course-button-bar {
     -fx-padding: 4 0 0 0;
 }
 
-/* Dialog */
+.courses-body {
+    -fx-alignment: TOP_LEFT;
+}
+
+/* -------------------------------------------------------------------------
+   Dialog
+   ------------------------------------------------------------------------- */
 .aq-dialog {
-    -fx-background-color: #FFFFFF;
+    -fx-background-color: -color-surface;
     -fx-background-radius: 20;
+    -fx-padding: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 24, 0, 0, 8);
 }
 
 .aq-dialog .label {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
-.aq-dialog .text-field {
-    -fx-background-radius: 8;
-    -fx-border-color: #E0E0E0;
-    -fx-border-radius: 8;
-    -fx-padding: 6 10 6 10;
+.aq-dialog-header {
+    -fx-font-size: 20px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-text;
+    -fx-padding: 0 0 8 0;
 }
 
-.aq-dialog .text-field:focused {
-    -fx-border-color: #89343B;
-    -fx-border-width: 2;
+.aq-dialog-button-bar {
+    -fx-alignment: CENTER_RIGHT;
+    -fx-spacing: 12;
+    -fx-padding: 16 0 0 0;
 }
 
 .policy-config-area {
     -fx-padding: 8 0 0 0;
 }
 
-/* Grade Breakdown panel */
-.breakdown-card {
-    -fx-background-color: #FFFFFF;
-    -fx-background-radius: 20;
-    -fx-border-color: #E0E0E0;
-    -fx-border-radius: 20;
-    -fx-border-width: 1;
-    -fx-padding: 16 18 16 18;
-}
-
+/* -------------------------------------------------------------------------
+   Grade Breakdown
+   ------------------------------------------------------------------------- */
 .breakdown-header {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 18px;
     -fx-font-weight: 600;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .breakdown-policy-type {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 12px;
     -fx-font-weight: 600;
-    -fx-text-fill: #89343B;
-    -fx-background-color: rgba(137, 52, 59, 0.10);
+    -fx-text-fill: -color-primary;
+    -fx-background-color: -color-primary-soft;
     -fx-background-radius: 999;
     -fx-padding: 4 10 4 10;
 }
@@ -255,86 +438,82 @@
 .breakdown-text {
     -fx-font-family: "Consolas", "Menlo", "Courier New", monospace;
     -fx-font-size: 13px;
-    -fx-text-fill: #1D1B20;
-    -fx-control-inner-background: #F5F5F5;
-    -fx-background-color: #F5F5F5;
+    -fx-text-fill: -color-text;
+    -fx-control-inner-background: -color-background;
+    -fx-background-color: -color-background;
     -fx-background-radius: 8;
-    -fx-border-color: #E0E0E0;
+    -fx-border-color: -color-border;
     -fx-border-radius: 8;
 }
 
 .breakdown-text .content {
-    -fx-background-color: #F5F5F5;
+    -fx-background-color: -color-background;
     -fx-background-radius: 8;
 }
 
 .breakdown-caption {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
-    -fx-text-fill: #828282;
+    -fx-text-fill: -color-text-secondary;
     -fx-padding: 4 0 0 0;
 }
 
 .breakdown-final-grade {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 36px;
     -fx-font-weight: 700;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .breakdown-letter-grade {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 20px;
     -fx-font-weight: 600;
-    -fx-text-fill: #89343B;
+    -fx-text-fill: -color-primary;
 }
 
-/* Grade Projection */
+/* -------------------------------------------------------------------------
+   Grade Projection
+   ------------------------------------------------------------------------- */
 .projection-section {
     -fx-padding: 4 0 0 0;
 }
 
 .projection-header {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 16px;
     -fx-font-weight: 600;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .projection-target-label {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
-    -fx-text-fill: #828282;
+    -fx-text-fill: -color-text-secondary;
 }
 
 .projection-target-field {
+    -fx-background-color: -color-surface;
     -fx-background-radius: 8;
-    -fx-border-color: #E0E0E0;
+    -fx-border-color: -color-border;
     -fx-border-radius: 8;
     -fx-border-width: 1;
     -fx-padding: 6 10 6 10;
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .projection-target-field:focused {
-    -fx-border-color: #89343B;
+    -fx-border-color: -color-primary;
     -fx-border-width: 2;
 }
 
 .projection-result {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
     -fx-font-weight: 600;
     -fx-padding: 8 12 8 12;
     -fx-background-radius: 8;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .projection-good {
-    -fx-text-fill: #2E7D32;
-    -fx-background-color: rgba(46, 125, 50, 0.10);
+    -fx-text-fill: -color-success;
+    -fx-background-color: -color-success-soft;
 }
 
 .projection-warn {
@@ -343,16 +522,18 @@
 }
 
 .projection-hard {
-    -fx-text-fill: #ED6C02;
-    -fx-background-color: rgba(237, 108, 2, 0.12);
+    -fx-text-fill: -color-warning;
+    -fx-background-color: -color-warning-soft;
 }
 
 .projection-impossible {
-    -fx-text-fill: #C62828;
-    -fx-background-color: rgba(198, 40, 40, 0.10);
+    -fx-text-fill: -color-danger;
+    -fx-background-color: -color-danger-soft;
 }
 
-/* Schedule view */
+/* -------------------------------------------------------------------------
+   Schedule view
+   ------------------------------------------------------------------------- */
 .schedule-scroll {
     -fx-background-color: transparent;
     -fx-background: transparent;
@@ -367,31 +548,22 @@
     -fx-padding: 0 4 0 0;
 }
 
-.schedule-course-section {
-    -fx-background-color: #FFFFFF;
-    -fx-background-radius: 20;
-    -fx-border-color: #E0E0E0;
-    -fx-border-radius: 20;
-    -fx-border-width: 1;
-    -fx-padding: 16 18 16 18;
-}
-
 .schedule-course-title {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 18px;
     -fx-font-weight: 600;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .timeslot-error {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-text-fill: #C62828;
+    -fx-text-fill: -color-danger;
     -fx-padding: 4 0 0 0;
 }
 
-/* Conflict panel */
+/* -------------------------------------------------------------------------
+   Conflict panel
+   ------------------------------------------------------------------------- */
 .conflict-panel {
     -fx-padding: 12 16 12 16;
     -fx-background-radius: 20;
@@ -400,98 +572,91 @@
 }
 
 .conflict-panel-ok {
-    -fx-background-color: rgba(46, 125, 50, 0.10);
-    -fx-border-color: #2E7D32;
+    -fx-background-color: -color-success-soft;
+    -fx-border-color: -color-success;
 }
 
 .conflict-panel-danger {
-    -fx-background-color: rgba(198, 40, 40, 0.10);
-    -fx-border-color: #C62828;
+    -fx-background-color: -color-danger-soft;
+    -fx-border-color: -color-danger;
 }
 
 .conflict-ok-text {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
     -fx-font-weight: 600;
-    -fx-text-fill: #2E7D32;
+    -fx-text-fill: -color-success;
 }
 
 .conflict-heading {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
     -fx-font-weight: 600;
-    -fx-text-fill: #C62828;
+    -fx-text-fill: -color-danger;
     -fx-padding: 0 0 4 0;
 }
 
 .conflict-line {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 13px;
     -fx-font-weight: 500;
-    -fx-text-fill: #C62828;
+    -fx-text-fill: -color-danger;
 }
 
-/* Dashboard */
+/* -------------------------------------------------------------------------
+   Dashboard
+   ------------------------------------------------------------------------- */
 .dashboard-pane {
     -fx-alignment: TOP_LEFT;
 }
 
 .dashboard-caption {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
-    -fx-text-fill: #828282;
+    -fx-text-fill: -color-text-secondary;
 }
 
 .dashboard-subheader {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 18px;
     -fx-font-weight: 600;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
     -fx-padding: 4 0 0 0;
 }
 
 .dashboard-cumulative-card {
-    -fx-background-color: #FFFFFF;
-    -fx-background-radius: 20;
-    -fx-border-color: #E0E0E0;
-    -fx-border-radius: 20;
-    -fx-border-width: 1;
     -fx-padding: 20 24 20 24;
 }
 
 .dashboard-cumulative-value {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 56px;
     -fx-font-weight: 700;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .dashboard-cumulative-bar {
     -fx-pref-height: 12;
 }
 
-.dashboard-cumulative-bar > .track {
-    -fx-background-color: #E0E0E0;
+.dashboard-cumulative-bar > .track,
+.dashboard-term-bar > .track {
+    -fx-background-color: -color-border;
     -fx-background-radius: 999;
 }
 
-.dashboard-cumulative-bar > .bar {
+.dashboard-cumulative-bar > .bar,
+.dashboard-term-bar > .bar {
     -fx-background-radius: 999;
     -fx-background-insets: 0;
     -fx-padding: 0;
 }
 
 /* GPA color coding — ProgressBar accent */
-.gpa-excellent > .bar { -fx-background-color: #2E7D32; }
-.gpa-good      > .bar { -fx-background-color: #1565C0; }
-.gpa-fair      > .bar { -fx-background-color: #F9A825; }
-.gpa-poor      > .bar { -fx-background-color: #C62828; }
+.gpa-excellent > .bar { -fx-background-color: -color-success; }
+.gpa-good      > .bar { -fx-background-color: -color-primary; }
+.gpa-fair      > .bar { -fx-background-color: -color-warning; }
+.gpa-poor      > .bar { -fx-background-color: -color-danger; }
 
 /* GPA color coding — large value text */
-.gpa-text-excellent { -fx-text-fill: #2E7D32; }
-.gpa-text-good      { -fx-text-fill: #1565C0; }
-.gpa-text-fair      { -fx-text-fill: #B58A00; }
-.gpa-text-poor      { -fx-text-fill: #C62828; }
+.gpa-text-excellent { -fx-text-fill: -color-success; }
+.gpa-text-good      { -fx-text-fill: -color-primary; }
+.gpa-text-fair      { -fx-text-fill: -color-warning; }
+.gpa-text-poor      { -fx-text-fill: -color-danger; }
 
 .dashboard-scroll {
     -fx-background-color: transparent;
@@ -509,105 +674,78 @@
 }
 
 .dashboard-term-card {
-    -fx-background-color: #FFFFFF;
-    -fx-background-radius: 20;
-    -fx-border-color: #E0E0E0;
-    -fx-border-radius: 20;
-    -fx-border-width: 1;
     -fx-padding: 14 18 14 18;
     -fx-cursor: hand;
 }
 
 .dashboard-term-card:hover {
-    -fx-background-color: #FAFAFA;
+    -fx-background-color: -color-row-alt;
 }
 
 .dashboard-term-card-selected {
-    -fx-border-color: #89343B;
+    -fx-border-color: -color-primary;
     -fx-border-width: 2;
-    -fx-background-color: rgba(137, 52, 59, 0.04);
+    -fx-background-color: -color-primary-tint;
 }
 
 .dashboard-term-name {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 16px;
     -fx-font-weight: 600;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .dashboard-term-gpa {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 16px;
     -fx-font-weight: 600;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .dashboard-term-units {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 13px;
-    -fx-text-fill: #828282;
+    -fx-text-fill: -color-text-secondary;
 }
 
 .dashboard-term-bar {
     -fx-pref-height: 8;
 }
 
-.dashboard-term-bar > .track {
-    -fx-background-color: #E0E0E0;
-    -fx-background-radius: 999;
-}
-
-.dashboard-term-bar > .bar {
-    -fx-background-radius: 999;
-    -fx-background-insets: 0;
-    -fx-padding: 0;
-}
-
 .dashboard-term-codes {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 13px;
-    -fx-text-fill: #828282;
+    -fx-text-fill: -color-text-secondary;
 }
 
 .dashboard-course-card {
-    -fx-background-color: #FFFFFF;
-    -fx-background-radius: 12;
-    -fx-border-color: #E0E0E0;
-    -fx-border-radius: 12;
-    -fx-border-width: 1;
     -fx-padding: 10 14 10 14;
 }
 
 .dashboard-course-title {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
     -fx-font-weight: 600;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .dashboard-course-units {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 12px;
-    -fx-text-fill: #828282;
+    -fx-text-fill: -color-text-secondary;
 }
 
 .dashboard-course-grade {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 18px;
     -fx-font-weight: 700;
-    -fx-text-fill: #1D1B20;
+    -fx-text-fill: -color-text;
 }
 
 .dashboard-course-letter {
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-size: 14px;
     -fx-font-weight: 600;
-    -fx-text-fill: #89343B;
+    -fx-text-fill: -color-primary;
 }
 
-/* Form validation */
+/* -------------------------------------------------------------------------
+   Form validation
+   ------------------------------------------------------------------------- */
 .field-error {
-    -fx-border-color: #EF233C;
+    -fx-border-color: -color-danger;
     -fx-border-width: 1.5;
     -fx-border-radius: 8;
 }
@@ -618,34 +756,30 @@
 .field-error > .text-field,
 .field-error > .combo-box-base,
 .field-error > .spinner {
-    -fx-border-color: #EF233C;
+    -fx-border-color: -color-danger;
     -fx-border-width: 1.5;
     -fx-border-radius: 8;
 }
 
 .error-label {
-    -fx-text-fill: #EF233C;
+    -fx-text-fill: -color-danger;
     -fx-font-size: 11px;
-    -fx-font-family: "Inter", "Segoe UI", "System";
 }
 
 .weights-sum-error {
-    -fx-text-fill: #EF233C;
+    -fx-text-fill: -color-danger;
     -fx-font-size: 11px;
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-weight: 600;
 }
 
 .score-exceeds-max {
-    -fx-background-color: rgba(239, 35, 60, 0.12);
-    -fx-text-fill: #EF233C;
+    -fx-background-color: -color-danger-soft;
+    -fx-text-fill: -color-danger;
     -fx-font-weight: 600;
 }
 
 .weights-sum-ok {
-    -fx-text-fill: #2E7D32;
+    -fx-text-fill: -color-success;
     -fx-font-size: 11px;
-    -fx-font-family: "Inter", "Segoe UI", "System";
     -fx-font-weight: 600;
 }
-
