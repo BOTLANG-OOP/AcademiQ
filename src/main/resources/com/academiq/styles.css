@@ -604,3 +604,48 @@
     -fx-font-weight: 600;
     -fx-text-fill: #89343B;
 }
+
+/* Form validation */
+.field-error {
+    -fx-border-color: #EF233C;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+}
+
+.field-error .text-field,
+.field-error .combo-box-base,
+.field-error .spinner,
+.field-error > .text-field,
+.field-error > .combo-box-base,
+.field-error > .spinner {
+    -fx-border-color: #EF233C;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+}
+
+.error-label {
+    -fx-text-fill: #EF233C;
+    -fx-font-size: 11px;
+    -fx-font-family: "Inter", "Segoe UI", "System";
+}
+
+.weights-sum-error {
+    -fx-text-fill: #EF233C;
+    -fx-font-size: 11px;
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-weight: 600;
+}
+
+.score-exceeds-max {
+    -fx-background-color: rgba(239, 35, 60, 0.12);
+    -fx-text-fill: #EF233C;
+    -fx-font-weight: 600;
+}
+
+.weights-sum-ok {
+    -fx-text-fill: #2E7D32;
+    -fx-font-size: 11px;
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-weight: 600;
+}
+
