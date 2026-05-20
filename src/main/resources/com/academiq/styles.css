@@ -99,6 +99,18 @@
     -fx-background-color: derive(#89343B, -8%);
 }
 
+.aq-button-secondary {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #89343B;
+    -fx-border-color: #89343B;
+    -fx-border-radius: 20;
+    -fx-border-width: 1;
+}
+
+.aq-button-secondary:hover {
+    -fx-background-color: rgba(137, 52, 59, 0.08);
+}
+
 .aq-button-danger {
     -fx-background-color: #C62828;
     -fx-text-fill: white;
@@ -122,6 +134,67 @@
 
 .courses-body {
     -fx-alignment: TOP_LEFT;
+}
+
+/* Course table (per design tokens — Tables section) */
+.course-table {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 20;
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 20;
+    -fx-padding: 0;
+}
+
+.course-table .column-header-background {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 20 20 0 0;
+}
+
+.course-table .column-header,
+.course-table .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #E0E0E0 transparent;
+    -fx-size: 44;
+}
+
+.course-table .column-header .label {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 16px;
+    -fx-text-fill: #828282;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 16 0 16;
+}
+
+.course-table .table-row-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent transparent #F5F5F5 transparent;
+    -fx-cell-size: 44;
+}
+
+.course-table .table-row-cell:hover {
+    -fx-background-color: #F5F5F5;
+}
+
+.course-table .table-row-cell:selected {
+    -fx-background-color: rgba(137, 52, 59, 0.10);
+}
+
+.course-table .table-cell {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+    -fx-text-fill: #1D1B20;
+    -fx-padding: 12 16 12 16;
+    -fx-border-color: transparent;
+}
+
+.course-table .placeholder .label {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 16px;
+    -fx-text-fill: #828282;
+}
+
+.course-button-bar {
+    -fx-padding: 4 0 0 0;
 }
 
 /* Dialog */

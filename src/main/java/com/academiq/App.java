@@ -1,11 +1,15 @@
 package com.academiq;
 
+import com.academiq.model.Course;
 import com.academiq.model.Student;
 import com.academiq.model.Term;
 import com.academiq.persistence.SqliteDataStore;
 
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -19,11 +23,15 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -221,14 +229,102 @@ public class App extends Application {
         Label emptyPrompt = new Label("Add a term to get started");
         emptyPrompt.getStyleClass().add("empty-prompt");
 
-        Label coursesPlaceholder = new Label("Select a course in this term to enter grades");
-        coursesPlaceholder.getStyleClass().add("placeholder-subtitle");
+        Label noTermSelected = new Label("Select a term to view courses");
+        noTermSelected.getStyleClass().add("empty-prompt");
 
-        body.getChildren().addAll(emptyPrompt, coursesPlaceholder);
+        TableView<Course> courseTable = new TableView<>();
+        courseTable.getStyleClass().add("course-table");
+        courseTable.setPlaceholder(new Label("No courses yet. Click 'Add Course' to begin"));
+
+        TableColumn<Course, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getName()));
+        nameCol.setPrefWidth(220);
+
+        TableColumn<Course, String> codeCol = new TableColumn<>("Code");
+        codeCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getCode()));
+        codeCol.setPrefWidth(120);
+
+        TableColumn<Course, Number> unitsCol = new TableColumn<>("Units");
+        unitsCol.setCellValueFactory(cd -> new ReadOnlyObjectWrapper<>(cd.getValue().getUnits()));
+        unitsCol.setPrefWidth(80);
+
+        TableColumn<Course, Number> gradeCol = new TableColumn<>("Grade");
+        gradeCol.setCellValueFactory(cd -> cd.getValue().finalGradeProperty());
+        gradeCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number value, boolean empty) {
+                super.updateItem(value, empty);
+                if (empty || value == null) {
+                    setText(null);
+                } else {
+                    setText(String.format("%.2f", value.doubleValue()));
+                }
+            }
+        });
+        gradeCol.setPrefWidth(100);
+
+        courseTable.getColumns().addAll(nameCol, codeCol, unitsCol, gradeCol);
+
+        Runnable rebindTable = () -> {
+            Term sel = termCombo.getSelectionModel().getSelectedItem();
+            if (sel == null) {
+                courseTable.setItems(FXCollections.emptyObservableList());
+            } else {
+                courseTable.setItems(sel.getCourses());
+            }
+        };
+        termCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldT, newT) -> rebindTable.run());
+        rebindTable.run();
+
+        Button addCourseButton = new Button("Add Course");
+        addCourseButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addCourseButton.disableProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
+        addCourseButton.setOnAction(e -> System.out.println("Add Course dialog — to be implemented in AQ-025"));
+
+        Button editCourseButton = new Button("Edit Course");
+        editCourseButton.getStyleClass().addAll("aq-button", "aq-button-secondary");
+        editCourseButton.disableProperty().bind(courseTable.getSelectionModel().selectedItemProperty().isNull());
+        editCourseButton.setOnAction(e -> System.out.println("Edit Course dialog — to be implemented in AQ-025"));
+
+        Button removeCourseButton = new Button("Remove Course");
+        removeCourseButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeCourseButton.disableProperty().bind(courseTable.getSelectionModel().selectedItemProperty().isNull());
+        removeCourseButton.setOnAction(e -> {
+            Course selected = courseTable.getSelectionModel().getSelectedItem();
+            Term term = termCombo.getSelectionModel().getSelectedItem();
+            if (selected == null || term == null) return;
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Remove course '" + selected.getName() + "'? This removes its assessments and schedule.",
+                    ButtonType.OK, ButtonType.CANCEL);
+            confirm.setHeaderText(null);
+            confirm.setTitle("Remove course");
+            confirm.showAndWait().ifPresent(bt -> {
+                if (bt == ButtonType.OK) {
+                    term.removeCourse(selected);
+                    store.scheduleSave(student);
+                }
+            });
+        });
+
+        HBox courseButtonBar = new HBox(12, addCourseButton, editCourseButton, removeCourseButton);
+        courseButtonBar.setAlignment(Pos.CENTER_LEFT);
+        courseButtonBar.getStyleClass().add("course-button-bar");
+
+        VBox tableSection = new VBox(12, courseTable, courseButtonBar);
+        VBox.setVgrow(courseTable, Priority.ALWAYS);
+
+        body.getChildren().addAll(emptyPrompt, noTermSelected, tableSection);
+
         emptyPrompt.visibleProperty().bind(Bindings.isEmpty(student.getTerms()));
         emptyPrompt.managedProperty().bind(emptyPrompt.visibleProperty());
-        coursesPlaceholder.visibleProperty().bind(Bindings.isNotEmpty(student.getTerms()));
-        coursesPlaceholder.managedProperty().bind(coursesPlaceholder.visibleProperty());
+
+        noTermSelected.visibleProperty().bind(
+                Bindings.isNotEmpty(student.getTerms())
+                        .and(termCombo.getSelectionModel().selectedItemProperty().isNull()));
+        noTermSelected.managedProperty().bind(noTermSelected.visibleProperty());
+
+        tableSection.visibleProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNotNull());
+        tableSection.managedProperty().bind(tableSection.visibleProperty());
 
         student.getTerms().addListener((ListChangeListener<Term>) c -> {
             if (termCombo.getSelectionModel().isEmpty() && !student.getTerms().isEmpty()) {
