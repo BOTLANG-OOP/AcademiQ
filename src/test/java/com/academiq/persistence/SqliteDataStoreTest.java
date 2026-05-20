@@ -19,12 +19,12 @@ import java.sql.Statement;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashMap;
-import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -292,7 +292,6 @@ class SqliteDataStoreTest {
         t2.addCourse(c);
         s.addTerm(t2);
 
-    
         List<Double> termGpasBefore = new ArrayList<>();
         Map<String, Double> courseGradesBefore = new HashMap<>();
         for (int ti = 0; ti < s.getTerms().size(); ti++) {
