@@ -5,6 +5,7 @@ import com.academiq.grading.GradingPolicy;
 import com.academiq.grading.PointsBasedGrading;
 import com.academiq.grading.WeightedGrading;
 import com.academiq.model.Assessment;
+import com.academiq.model.ConflictRecord;
 import com.academiq.model.Course;
 import com.academiq.model.Student;
 import com.academiq.model.Term;
@@ -56,6 +57,7 @@ import java.time.LocalTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 
 public class App extends Application {
@@ -1274,6 +1276,9 @@ public class App extends Application {
         StackPane body = new StackPane(noTermSelected, noCoursesLabel, scroll);
         body.getStyleClass().add("courses-body");
 
+        VBox conflictPanel = new VBox(6);
+        conflictPanel.getStyleClass().add("conflict-panel");
+
         final ListChangeListener<Course>[] courseListener = new ListChangeListener[1];
         final Term[] boundTerm = { null };
 
@@ -1286,21 +1291,81 @@ public class App extends Application {
             }
         };
 
+        DateTimeFormatter conflictTimeFmt = DateTimeFormatter.ofPattern("HH:mm");
+        Runnable refreshConflicts = () -> {
+            conflictPanel.getChildren().clear();
+            conflictPanel.getStyleClass().removeAll("conflict-panel-ok", "conflict-panel-danger");
+            Term t = termCombo.getSelectionModel().getSelectedItem();
+            if (t == null) return;
+            List<ConflictRecord> conflicts = t.detectConflicts();
+            if (conflicts.isEmpty()) {
+                conflictPanel.getStyleClass().add("conflict-panel-ok");
+                Label ok = new Label("✓ No schedule conflicts");
+                ok.getStyleClass().add("conflict-ok-text");
+                conflictPanel.getChildren().add(ok);
+            } else {
+                conflictPanel.getStyleClass().add("conflict-panel-danger");
+                Label heading = new Label(conflicts.size() + " schedule conflict"
+                        + (conflicts.size() == 1 ? "" : "s") + " detected");
+                heading.getStyleClass().add("conflict-heading");
+                conflictPanel.getChildren().add(heading);
+                for (ConflictRecord cr : conflicts) {
+                    String line = String.format(
+                            "⚠ CONFLICT: %s (%s %s–%s) overlaps with %s (%s %s–%s)",
+                            cr.getCourseA().getCode(),
+                            cr.getSlotA().getDayOfWeek().name(),
+                            cr.getSlotA().getStartTime().format(conflictTimeFmt),
+                            cr.getSlotA().getEndTime().format(conflictTimeFmt),
+                            cr.getCourseB().getCode(),
+                            cr.getSlotB().getDayOfWeek().name(),
+                            cr.getSlotB().getStartTime().format(conflictTimeFmt),
+                            cr.getSlotB().getEndTime().format(conflictTimeFmt));
+                    Label l = new Label(line);
+                    l.getStyleClass().add("conflict-line");
+                    l.setWrapText(true);
+                    conflictPanel.getChildren().add(l);
+                }
+            }
+        };
+
+        ListChangeListener<TimeSlot> slotListener = c -> refreshConflicts.run();
+
         Runnable rebind = () -> {
             Term old = boundTerm[0];
             Term cur = termCombo.getSelectionModel().getSelectedItem();
-            if (old != null && courseListener[0] != null) {
-                old.getCourses().removeListener(courseListener[0]);
+            if (old != null) {
+                if (courseListener[0] != null) old.getCourses().removeListener(courseListener[0]);
+                for (Course c : old.getCourses()) c.getTimeSlots().removeListener(slotListener);
             }
             boundTerm[0] = cur;
             if (cur != null) {
-                courseListener[0] = c -> rebuildSections.run();
+                courseListener[0] = (ListChangeListener<Course>) change -> {
+                    while (change.next()) {
+                        if (change.wasAdded()) {
+                            for (Course added : change.getAddedSubList()) {
+                                added.getTimeSlots().addListener(slotListener);
+                            }
+                        }
+                        if (change.wasRemoved()) {
+                            for (Course removed : change.getRemoved()) {
+                                removed.getTimeSlots().removeListener(slotListener);
+                            }
+                        }
+                    }
+                    rebuildSections.run();
+                    refreshConflicts.run();
+                };
                 cur.getCourses().addListener(courseListener[0]);
+                for (Course c : cur.getCourses()) c.getTimeSlots().addListener(slotListener);
             }
             rebuildSections.run();
+            refreshConflicts.run();
         };
         termCombo.getSelectionModel().selectedItemProperty().addListener((o, ov, nv) -> rebind.run());
         rebind.run();
+
+        conflictPanel.visibleProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNotNull());
+        conflictPanel.managedProperty().bind(conflictPanel.visibleProperty());
 
         noTermSelected.visibleProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
         noTermSelected.managedProperty().bind(noTermSelected.visibleProperty());
@@ -1317,7 +1382,7 @@ public class App extends Application {
         }, termCombo.getSelectionModel().selectedItemProperty(), courseSections.getChildren()));
         scroll.managedProperty().bind(scroll.visibleProperty());
 
-        VBox pane = new VBox(16, header, selectors, new Separator(), body);
+        VBox pane = new VBox(16, header, selectors, conflictPanel, new Separator(), body);
         pane.setPadding(new Insets(16));
         VBox.setVgrow(body, Priority.ALWAYS);
         return pane;
