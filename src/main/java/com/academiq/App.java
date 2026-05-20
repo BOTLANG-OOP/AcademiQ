@@ -4,6 +4,7 @@ import com.academiq.grading.CurvedGrading;
 import com.academiq.grading.GradingPolicy;
 import com.academiq.grading.PointsBasedGrading;
 import com.academiq.grading.WeightedGrading;
+import com.academiq.model.Assessment;
 import com.academiq.model.Course;
 import com.academiq.model.Student;
 import com.academiq.model.Term;
@@ -23,6 +24,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
@@ -42,7 +44,10 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
+import java.time.LocalDate;
 import java.time.Year;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 
 public class App extends Application {
@@ -678,7 +683,357 @@ public class App extends Application {
     }
 
     private VBox createGradeEntryPane() {
-        return createPlaceholder("Grade Entry", "Select a course to enter grades");
+        Label header = new Label("Grade Entry");
+        header.getStyleClass().add("section-header");
+
+        ComboBox<Term> termCombo = new ComboBox<>(student.getTerms());
+        termCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Term term) {
+                if (term == null) return "";
+                return term.getName() + " (" + term.getSemester() + " " + term.getYear() + ")";
+            }
+            @Override
+            public Term fromString(String s) {
+                return null;
+            }
+        });
+        termCombo.setPromptText("Select a term");
+        termCombo.getStyleClass().add("term-combo");
+
+        ComboBox<Course> courseCombo = new ComboBox<>();
+        courseCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Course course) {
+                if (course == null) return "";
+                return course.getName() + " (" + course.getCode() + ")";
+            }
+            @Override
+            public Course fromString(String s) {
+                return null;
+            }
+        });
+        courseCombo.setPromptText("Select a course");
+        courseCombo.getStyleClass().add("term-combo");
+        courseCombo.disableProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
+
+        termCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldT, newT) -> {
+            if (newT == null) {
+                courseCombo.setItems(FXCollections.emptyObservableList());
+            } else {
+                courseCombo.setItems(newT.getCourses());
+                if (!newT.getCourses().isEmpty()) {
+                    courseCombo.getSelectionModel().select(0);
+                }
+            }
+        });
+        if (!student.getTerms().isEmpty()) {
+            termCombo.getSelectionModel().select(0);
+        }
+
+        HBox selectors = new HBox(12,
+                new Label("Term:"), termCombo,
+                new Label("Course:"), courseCombo);
+        selectors.setAlignment(Pos.CENTER_LEFT);
+        selectors.getStyleClass().add("term-controls");
+
+        TableView<Assessment> table = new TableView<>();
+        table.getStyleClass().add("course-table");
+        table.setEditable(true);
+        table.setPlaceholder(new Label("No assessments yet. Click 'Add Assessment' to begin"));
+
+        TableColumn<Assessment, String> titleCol = new TableColumn<>("Title");
+        titleCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getTitle()));
+        titleCol.setPrefWidth(180);
+
+        TableColumn<Assessment, String> categoryCol = new TableColumn<>("Category");
+        categoryCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getCategory()));
+        categoryCol.setPrefWidth(120);
+
+        TableColumn<Assessment, Number> scoreCol = new TableColumn<>("Score");
+        scoreCol.setCellValueFactory(cd -> cd.getValue().scoreProperty());
+        scoreCol.setEditable(true);
+        scoreCol.setCellFactory(col -> new ScoreEditingCell());
+        scoreCol.setPrefWidth(100);
+
+        TableColumn<Assessment, String> maxCol = new TableColumn<>("Max Score");
+        maxCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(formatNumber(cd.getValue().getMaxScore())));
+        maxCol.setPrefWidth(100);
+
+        TableColumn<Assessment, String> weightCol = new TableColumn<>("Weight");
+        weightCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(formatNumber(cd.getValue().getWeight())));
+        weightCol.setPrefWidth(80);
+
+        TableColumn<Assessment, String> dateCol = new TableColumn<>("Date");
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        dateCol.setCellValueFactory(cd -> {
+            LocalDate d = cd.getValue().getDate();
+            return new ReadOnlyStringWrapper(d == null ? "" : d.format(df));
+        });
+        dateCol.setPrefWidth(110);
+
+        TableColumn<Assessment, Number> percentCol = new TableColumn<>("%");
+        percentCol.setCellValueFactory(cd -> cd.getValue().scoreProperty());
+        percentCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number value, boolean empty) {
+                super.updateItem(value, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setText(null);
+                    return;
+                }
+                Assessment a = (Assessment) getTableRow().getItem();
+                if (!a.isGraded()) {
+                    setText("—");
+                } else {
+                    setText(String.format("%.1f%%", a.getPercentage()));
+                }
+            }
+        });
+        percentCol.setPrefWidth(80);
+
+        table.getColumns().addAll(titleCol, categoryCol, scoreCol, maxCol, weightCol, dateCol, percentCol);
+
+        Runnable rebindTable = () -> {
+            Course sel = courseCombo.getSelectionModel().getSelectedItem();
+            if (sel == null) {
+                table.setItems(FXCollections.emptyObservableList());
+            } else {
+                table.setItems(sel.getAssessments());
+            }
+        };
+        courseCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldC, newC) -> rebindTable.run());
+        rebindTable.run();
+
+        Button addButton = new Button("Add Assessment");
+        addButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addButton.disableProperty().bind(courseCombo.getSelectionModel().selectedItemProperty().isNull());
+        addButton.setOnAction(e -> {
+            Course course = courseCombo.getSelectionModel().getSelectedItem();
+            if (course == null) return;
+            showAssessmentDialog(course).ifPresent(a -> {
+                course.addAssessment(a);
+                table.getSelectionModel().select(a);
+                store.scheduleSave(student);
+            });
+        });
+
+        Button removeButton = new Button("Remove Assessment");
+        removeButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeButton.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
+        removeButton.setOnAction(e -> {
+            Course course = courseCombo.getSelectionModel().getSelectedItem();
+            Assessment selected = table.getSelectionModel().getSelectedItem();
+            if (course == null || selected == null) return;
+            course.removeAssessment(selected);
+            store.scheduleSave(student);
+        });
+
+        HBox buttonBar = new HBox(12, addButton, removeButton);
+        buttonBar.setAlignment(Pos.CENTER_LEFT);
+        buttonBar.getStyleClass().add("course-button-bar");
+
+        VBox tableSection = new VBox(12, table, buttonBar);
+        VBox.setVgrow(table, Priority.ALWAYS);
+
+        Label noCourseSelected = new Label("Select a course to enter grades");
+        noCourseSelected.getStyleClass().add("empty-prompt");
+
+        StackPane body = new StackPane(noCourseSelected, tableSection);
+        body.getStyleClass().add("courses-body");
+
+        noCourseSelected.visibleProperty().bind(courseCombo.getSelectionModel().selectedItemProperty().isNull());
+        noCourseSelected.managedProperty().bind(noCourseSelected.visibleProperty());
+        tableSection.visibleProperty().bind(courseCombo.getSelectionModel().selectedItemProperty().isNotNull());
+        tableSection.managedProperty().bind(tableSection.visibleProperty());
+
+        VBox pane = new VBox(16, header, selectors, new Separator(), body);
+        pane.setPadding(new Insets(16));
+        VBox.setVgrow(body, Priority.ALWAYS);
+        return pane;
+    }
+
+    private static String formatNumber(double v) {
+        if (v == Math.floor(v) && !Double.isInfinite(v)) {
+            return String.format("%.0f", v);
+        }
+        return String.format("%.2f", v);
+    }
+
+    private Optional<Assessment> showAssessmentDialog(Course course) {
+        Dialog<Assessment> dialog = new Dialog<>();
+        dialog.setTitle("Add Assessment");
+        dialog.setHeaderText("New assessment for " + course.getName());
+
+        ButtonType okType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
+
+        TextField titleField = new TextField();
+        titleField.setPromptText("e.g. Midterm Exam");
+
+        LinkedHashSet<String> categorySuggestions = new LinkedHashSet<>();
+        for (Assessment a : course.getAssessments()) {
+            if (a.getCategory() != null && !a.getCategory().isBlank()) {
+                categorySuggestions.add(a.getCategory());
+            }
+        }
+        ComboBox<String> categoryCombo = new ComboBox<>(FXCollections.observableArrayList(categorySuggestions));
+        categoryCombo.setEditable(true);
+        categoryCombo.setPromptText("Category");
+
+        TextField scoreField = new TextField("-1");
+        TextField maxScoreField = new TextField("100");
+        TextField weightField = new TextField("1.0");
+        DatePicker datePicker = new DatePicker(LocalDate.now());
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.add(new Label("Title:"), 0, 0);
+        grid.add(titleField, 1, 0);
+        grid.add(new Label("Category:"), 0, 1);
+        grid.add(categoryCombo, 1, 1);
+        grid.add(new Label("Score:"), 0, 2);
+        grid.add(scoreField, 1, 2);
+        grid.add(new Label("Max Score:"), 0, 3);
+        grid.add(maxScoreField, 1, 3);
+        grid.add(new Label("Weight:"), 0, 4);
+        grid.add(weightField, 1, 4);
+        grid.add(new Label("Date:"), 0, 5);
+        grid.add(datePicker, 1, 5);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        Runnable updateOk = () -> {
+            boolean valid = !titleField.getText().trim().isEmpty()
+                    && categoryCombo.getEditor().getText() != null
+                    && !categoryCombo.getEditor().getText().trim().isEmpty()
+                    && parseDoubleOrNull(scoreField.getText()) != null
+                    && parsePositiveDoubleOrNull(maxScoreField.getText()) != null
+                    && parsePositiveDoubleOrNull(weightField.getText()) != null
+                    && datePicker.getValue() != null;
+            okButton.setDisable(!valid);
+        };
+        titleField.textProperty().addListener((o, ov, nv) -> updateOk.run());
+        categoryCombo.getEditor().textProperty().addListener((o, ov, nv) -> updateOk.run());
+        scoreField.textProperty().addListener((o, ov, nv) -> updateOk.run());
+        maxScoreField.textProperty().addListener((o, ov, nv) -> updateOk.run());
+        weightField.textProperty().addListener((o, ov, nv) -> updateOk.run());
+        datePicker.valueProperty().addListener((o, ov, nv) -> updateOk.run());
+        updateOk.run();
+
+        dialog.setResultConverter(bt -> {
+            if (bt != okType) return null;
+            return new Assessment(
+                    titleField.getText().trim(),
+                    categoryCombo.getEditor().getText().trim(),
+                    Double.parseDouble(scoreField.getText().trim()),
+                    Double.parseDouble(maxScoreField.getText().trim()),
+                    Double.parseDouble(weightField.getText().trim()),
+                    datePicker.getValue());
+        });
+
+        return dialog.showAndWait();
+    }
+
+    private static Double parseDoubleOrNull(String s) {
+        if (s == null) return null;
+        try {
+            return Double.parseDouble(s.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static Double parsePositiveDoubleOrNull(String s) {
+        Double d = parseDoubleOrNull(s);
+        return (d != null && d > 0) ? d : null;
+    }
+
+    /** Editable table cell for Assessment.score: shows "—" when ungraded, numeric otherwise. */
+    private static final class ScoreEditingCell extends TableCell<Assessment, Number> {
+        private TextField textField;
+
+        @Override
+        public void startEdit() {
+            if (isEmpty()) return;
+            super.startEdit();
+            if (textField == null) {
+                textField = new TextField();
+                textField.setOnAction(e -> commitFromField());
+                textField.focusedProperty().addListener((obs, was, isNow) -> {
+                    if (!isNow) commitFromField();
+                });
+                textField.setOnKeyReleased(e -> {
+                    if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                        cancelEdit();
+                    }
+                });
+            }
+            Assessment a = getRowAssessment();
+            textField.setText(a == null ? "" : String.valueOf(a.getScore()));
+            setText(null);
+            setGraphic(textField);
+            textField.selectAll();
+            textField.requestFocus();
+        }
+
+        private void commitFromField() {
+            Double parsed = parseDoubleOrNull(textField.getText());
+            if (parsed == null) {
+                cancelEdit();
+                return;
+            }
+            commitEdit(parsed);
+        }
+
+        @Override
+        public void commitEdit(Number newValue) {
+            Assessment a = getRowAssessment();
+            if (a != null && newValue != null) {
+                a.setScore(newValue.doubleValue());
+            }
+            super.commitEdit(newValue);
+        }
+
+        @Override
+        public void cancelEdit() {
+            super.cancelEdit();
+            setGraphic(null);
+            updateItem(getItem(), isEmpty());
+        }
+
+        private Assessment getRowAssessment() {
+            return getTableRow() == null ? null : (Assessment) getTableRow().getItem();
+        }
+
+        @Override
+        protected void updateItem(Number value, boolean empty) {
+            super.updateItem(value, empty);
+            if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                setText(null);
+                setGraphic(null);
+                return;
+            }
+            if (isEditing()) {
+                if (textField != null) {
+                    textField.setText(value == null ? "" : String.valueOf(value.doubleValue()));
+                    setGraphic(textField);
+                    setText(null);
+                }
+            } else {
+                Assessment a = (Assessment) getTableRow().getItem();
+                if (!a.isGraded()) {
+                    setText("—");
+                } else {
+                    setText(formatNumber(a.getScore()));
+                }
+                setGraphic(null);
+            }
+        }
     }
 
     private VBox createDashboardPane() {
