@@ -8,6 +8,7 @@ import com.academiq.model.Assessment;
 import com.academiq.model.Course;
 import com.academiq.model.Student;
 import com.academiq.model.Term;
+import com.academiq.model.TimeSlot;
 import com.academiq.persistence.SqliteDataStore;
 
 import javafx.application.Application;
@@ -29,8 +30,10 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -47,7 +50,9 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
@@ -1228,7 +1233,243 @@ public class App extends Application {
     }
 
     private VBox createSchedulePane() {
-        return createPlaceholder("Schedule", "Weekly class schedule and conflicts");
+        Label header = new Label("Schedule");
+        header.getStyleClass().add("section-header");
+
+        ComboBox<Term> termCombo = new ComboBox<>(student.getTerms());
+        termCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Term term) {
+                if (term == null) return "";
+                return term.getName() + " (" + term.getSemester() + " " + term.getYear() + ")";
+            }
+            @Override
+            public Term fromString(String s) {
+                return null;
+            }
+        });
+        termCombo.setPromptText("Select a term");
+        termCombo.getStyleClass().add("term-combo");
+        if (!student.getTerms().isEmpty()) {
+            termCombo.getSelectionModel().select(0);
+        }
+
+        HBox selectors = new HBox(12, new Label("Term:"), termCombo);
+        selectors.setAlignment(Pos.CENTER_LEFT);
+        selectors.getStyleClass().add("term-controls");
+
+        Label noTermSelected = new Label("Select a term to manage schedules");
+        noTermSelected.getStyleClass().add("empty-prompt");
+
+        Label noCoursesLabel = new Label("No courses in this term");
+        noCoursesLabel.getStyleClass().add("empty-prompt");
+
+        VBox courseSections = new VBox(18);
+        courseSections.getStyleClass().add("schedule-sections");
+
+        ScrollPane scroll = new ScrollPane(courseSections);
+        scroll.setFitToWidth(true);
+        scroll.getStyleClass().add("schedule-scroll");
+
+        StackPane body = new StackPane(noTermSelected, noCoursesLabel, scroll);
+        body.getStyleClass().add("courses-body");
+
+        final ListChangeListener<Course>[] courseListener = new ListChangeListener[1];
+        final Term[] boundTerm = { null };
+
+        Runnable rebuildSections = () -> {
+            courseSections.getChildren().clear();
+            Term sel = termCombo.getSelectionModel().getSelectedItem();
+            if (sel == null) return;
+            for (Course course : sel.getCourses()) {
+                courseSections.getChildren().add(createCourseScheduleSection(course));
+            }
+        };
+
+        Runnable rebind = () -> {
+            Term old = boundTerm[0];
+            Term cur = termCombo.getSelectionModel().getSelectedItem();
+            if (old != null && courseListener[0] != null) {
+                old.getCourses().removeListener(courseListener[0]);
+            }
+            boundTerm[0] = cur;
+            if (cur != null) {
+                courseListener[0] = c -> rebuildSections.run();
+                cur.getCourses().addListener(courseListener[0]);
+            }
+            rebuildSections.run();
+        };
+        termCombo.getSelectionModel().selectedItemProperty().addListener((o, ov, nv) -> rebind.run());
+        rebind.run();
+
+        noTermSelected.visibleProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
+        noTermSelected.managedProperty().bind(noTermSelected.visibleProperty());
+
+        noCoursesLabel.visibleProperty().bind(Bindings.createBooleanBinding(() -> {
+            Term t = termCombo.getSelectionModel().getSelectedItem();
+            return t != null && t.getCourses().isEmpty();
+        }, termCombo.getSelectionModel().selectedItemProperty(), courseSections.getChildren()));
+        noCoursesLabel.managedProperty().bind(noCoursesLabel.visibleProperty());
+
+        scroll.visibleProperty().bind(Bindings.createBooleanBinding(() -> {
+            Term t = termCombo.getSelectionModel().getSelectedItem();
+            return t != null && !t.getCourses().isEmpty();
+        }, termCombo.getSelectionModel().selectedItemProperty(), courseSections.getChildren()));
+        scroll.managedProperty().bind(scroll.visibleProperty());
+
+        VBox pane = new VBox(16, header, selectors, new Separator(), body);
+        pane.setPadding(new Insets(16));
+        VBox.setVgrow(body, Priority.ALWAYS);
+        return pane;
+    }
+
+    private VBox createCourseScheduleSection(Course course) {
+        Label title = new Label(course.getName() + " (" + course.getCode() + ")");
+        title.getStyleClass().add("schedule-course-title");
+
+        TableView<TimeSlot> table = new TableView<>(course.getTimeSlots());
+        table.getStyleClass().add("course-table");
+        table.setPlaceholder(new Label("No time slots yet"));
+        table.setPrefHeight(180);
+
+        TableColumn<TimeSlot, String> dayCol = new TableColumn<>("Day");
+        dayCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getDayOfWeek().name()));
+        dayCol.setPrefWidth(140);
+
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
+        TableColumn<TimeSlot, String> startCol = new TableColumn<>("Start");
+        startCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getStartTime().format(timeFmt)));
+        startCol.setPrefWidth(100);
+
+        TableColumn<TimeSlot, String> endCol = new TableColumn<>("End");
+        endCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getEndTime().format(timeFmt)));
+        endCol.setPrefWidth(100);
+
+        TableColumn<TimeSlot, String> roomCol = new TableColumn<>("Room");
+        roomCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getRoom() == null ? "" : cd.getValue().getRoom()));
+        roomCol.setPrefWidth(160);
+
+        table.getColumns().addAll(dayCol, startCol, endCol, roomCol);
+
+        Button addButton = new Button("Add Time Slot");
+        addButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addButton.setOnAction(e -> showTimeSlotDialog().ifPresent(ts -> {
+            course.addTimeSlot(ts);
+            table.getSelectionModel().select(ts);
+            store.scheduleSave(student);
+        }));
+
+        Button removeButton = new Button("Remove");
+        removeButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeButton.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
+        removeButton.setOnAction(e -> {
+            TimeSlot sel = table.getSelectionModel().getSelectedItem();
+            if (sel == null) return;
+            course.getTimeSlots().remove(sel);
+            store.scheduleSave(student);
+        });
+
+        HBox buttonBar = new HBox(12, addButton, removeButton);
+        buttonBar.setAlignment(Pos.CENTER_LEFT);
+
+        VBox section = new VBox(8, title, table, buttonBar);
+        section.getStyleClass().add("schedule-course-section");
+        return section;
+    }
+
+    private Optional<TimeSlot> showTimeSlotDialog() {
+        Dialog<TimeSlot> dialog = new Dialog<>();
+        dialog.setTitle("Add Time Slot");
+        dialog.setHeaderText("New time slot");
+
+        ButtonType okType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
+
+        ComboBox<DayOfWeek> dayCombo = new ComboBox<>(FXCollections.observableArrayList(
+                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY));
+        dayCombo.getSelectionModel().select(DayOfWeek.MONDAY);
+
+        Spinner<Integer> startHour = new Spinner<>(7, 21, 8);
+        startHour.setEditable(true);
+        startHour.setPrefWidth(80);
+        Spinner<Integer> startMin = new Spinner<>();
+        startMin.setValueFactory(new SpinnerValueFactory.ListSpinnerValueFactory<>(
+                FXCollections.observableArrayList(0, 15, 30, 45)));
+        startMin.getValueFactory().setValue(30);
+        startMin.setEditable(true);
+        startMin.setPrefWidth(80);
+
+        Spinner<Integer> endHour = new Spinner<>(7, 21, 10);
+        endHour.setEditable(true);
+        endHour.setPrefWidth(80);
+        Spinner<Integer> endMin = new Spinner<>();
+        endMin.setValueFactory(new SpinnerValueFactory.ListSpinnerValueFactory<>(
+                FXCollections.observableArrayList(0, 15, 30, 45)));
+        endMin.getValueFactory().setValue(0);
+        endMin.setEditable(true);
+        endMin.setPrefWidth(80);
+
+        TextField roomField = new TextField();
+        roomField.setPromptText("e.g. CL-301");
+
+        Label errorLabel = new Label();
+        errorLabel.getStyleClass().add("timeslot-error");
+        errorLabel.setVisible(false);
+        errorLabel.setManaged(false);
+
+        HBox startBox = new HBox(6, startHour, new Label(":"), startMin);
+        startBox.setAlignment(Pos.CENTER_LEFT);
+        HBox endBox = new HBox(6, endHour, new Label(":"), endMin);
+        endBox.setAlignment(Pos.CENTER_LEFT);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.add(new Label("Day:"), 0, 0);
+        grid.add(dayCombo, 1, 0);
+        grid.add(new Label("Start:"), 0, 1);
+        grid.add(startBox, 1, 1);
+        grid.add(new Label("End:"), 0, 2);
+        grid.add(endBox, 1, 2);
+        grid.add(new Label("Room:"), 0, 3);
+        grid.add(roomField, 1, 3);
+        grid.add(errorLabel, 0, 4, 2, 1);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+
+        Runnable validate = () -> {
+            LocalTime start = LocalTime.of(startHour.getValue(), startMin.getValue());
+            LocalTime end = LocalTime.of(endHour.getValue(), endMin.getValue());
+            boolean valid = end.isAfter(start);
+            if (!valid) {
+                errorLabel.setText("End time must be after start time");
+                errorLabel.setVisible(true);
+                errorLabel.setManaged(true);
+            } else {
+                errorLabel.setVisible(false);
+                errorLabel.setManaged(false);
+            }
+            okButton.setDisable(!valid);
+        };
+        startHour.valueProperty().addListener((o, ov, nv) -> validate.run());
+        startMin.valueProperty().addListener((o, ov, nv) -> validate.run());
+        endHour.valueProperty().addListener((o, ov, nv) -> validate.run());
+        endMin.valueProperty().addListener((o, ov, nv) -> validate.run());
+        validate.run();
+
+        dialog.setResultConverter(bt -> {
+            if (bt != okType) return null;
+            LocalTime start = LocalTime.of(startHour.getValue(), startMin.getValue());
+            LocalTime end = LocalTime.of(endHour.getValue(), endMin.getValue());
+            return new TimeSlot(dayCombo.getValue(), start, end, roomField.getText().trim());
+        });
+
+        return dialog.showAndWait();
     }
 
     private VBox createPlaceholder(String titleText, String subtitleText) {
