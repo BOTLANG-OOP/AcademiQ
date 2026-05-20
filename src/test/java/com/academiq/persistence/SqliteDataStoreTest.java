@@ -19,6 +19,8 @@ import java.sql.Statement;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -277,5 +279,138 @@ class SqliteDataStoreTest {
         assertTrue(baseField.get(policy) instanceof WeightedGrading);
 
         assertEquals(originalGrade, lc.getFinalGrade(), 1e-9);
+    }
+
+    @Test
+    void testGpaConsistencyRoundTrip() {
+        Student s = buildSampleStudent();
+
+        Term t2 = new Term("Spring 2026", 2026, "Spring");
+        WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
+        Course c = new Course("Eng", "ENG101", 3, wg);
+        c.addAssessment(new Assessment("Mid", "Exams", 88.0, 100.0, 1.0, LocalDate.of(2026, 3, 1)));
+        t2.addCourse(c);
+        s.addTerm(t2);
+
+        List<Double> termGpasBefore = new ArrayList<>();
+        Map<String, Double> courseGradesBefore = new HashMap<>();
+        for (int ti = 0; ti < s.getTerms().size(); ti++) {
+            Term term = s.getTerms().get(ti);
+            termGpasBefore.add(term.getTermGPA());
+            for (Course co : term.getCourses()) {
+                courseGradesBefore.put(ti + ":" + co.getCode(), co.getFinalGrade());
+            }
+        }
+        double cumulativeBefore = s.getCumulativeGPA();
+
+        store.save(s);
+
+        Student loaded = store.loadStudent(s.getId());
+        assertNotNull(loaded);
+
+        List<Double> termGpasAfter = new ArrayList<>();
+        Map<String, Double> courseGradesAfter = new HashMap<>();
+        for (int ti = 0; ti < loaded.getTerms().size(); ti++) {
+            Term term = loaded.getTerms().get(ti);
+            termGpasAfter.add(term.getTermGPA());
+            for (Course co : term.getCourses()) {
+                courseGradesAfter.put(ti + ":" + co.getCode(), co.getFinalGrade());
+            }
+        }
+        double cumulativeAfter = loaded.getCumulativeGPA();
+
+        assertEquals(termGpasBefore.size(), termGpasAfter.size());
+        assertEquals(courseGradesBefore.size(), courseGradesAfter.size());
+
+        for (int i = 0; i < termGpasBefore.size(); i++) {
+            assertEquals(termGpasBefore.get(i), termGpasAfter.get(i), 1e-9);
+        }
+
+        for (String k : courseGradesBefore.keySet()) {
+            assertTrue(courseGradesAfter.containsKey(k));
+            assertEquals(courseGradesBefore.get(k), courseGradesAfter.get(k), 1e-9);
+        }
+
+        assertEquals(cumulativeBefore, cumulativeAfter, 1e-9);
+    }
+
+    @Test
+    void testZeroUnitsGpaRoundTrip() {
+        Student s = new Student("ZeroUnits", "stu-zero");
+        Term t = new Term("ZTerm", 2026, "Z");
+
+        WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
+        Course audit = new Course("Audit", "AUD0", 0, wg);
+        audit.addAssessment(new Assessment("A1", "Exams", 90.0, 100.0, 1.0, LocalDate.of(2026, 1, 1)));
+        t.addCourse(audit);
+        s.addTerm(t);
+
+        double termGpaBefore = t.getTermGPA();
+        double cumulativeBefore = s.getCumulativeGPA();
+
+        store.save(s);
+        Student loaded = store.loadStudent(s.getId());
+        assertNotNull(loaded);
+
+        Term lt = loaded.getTerms().get(0);
+        assertEquals(termGpaBefore, lt.getTermGPA(), 1e-9);
+        assertEquals(cumulativeBefore, loaded.getCumulativeGPA(), 1e-9);
+    }
+
+    @Test
+    void testManyTermsGpaStability() {
+        Student s = new Student("ManyTerms", "stu-many");
+
+        int count = 100;
+        for (int i = 0; i < count; i++) {
+            Term t = new Term("T" + i, 2026, "S");
+            WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
+            Course c = new Course("Course" + i, "C" + i, 3, wg);
+            c.addAssessment(new Assessment("Mid", "Exams", 80.0, 100.0, 1.0, LocalDate.of(2026, 2, 1)));
+            t.addCourse(c);
+            s.addTerm(t);
+        }
+
+        List<Double> termGpasBefore = new ArrayList<>();
+        for (Term t : s.getTerms()) termGpasBefore.add(t.getTermGPA());
+        double cumulativeBefore = s.getCumulativeGPA();
+
+        store.save(s);
+        Student loaded = store.loadStudent(s.getId());
+        assertNotNull(loaded);
+
+        assertEquals(count, loaded.getTerms().size());
+        for (int i = 0; i < count; i++) {
+            assertEquals(termGpasBefore.get(i), loaded.getTerms().get(i).getTermGPA(), 1e-9);
+        }
+        assertEquals(cumulativeBefore, loaded.getCumulativeGPA(), 1e-9);
+    }
+
+    @Test
+    void testExtremeGradesRoundTrip() {
+        Student s = new Student("Edge", "stu-edge");
+        Term t = new Term("EdgeTerm", 2026, "E");
+
+        WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
+        Course low = new Course("Low", "L1", 3, wg);
+        low.addAssessment(new Assessment("LowA", "Exams", 0.0, 100.0, 1.0, LocalDate.of(2026, 1, 1)));
+
+        Course high = new Course("High", "H1", 3, wg);
+        high.addAssessment(new Assessment("HighA", "Exams", 100.0, 100.0, 1.0, LocalDate.of(2026, 1, 2)));
+
+        t.addCourse(low);
+        t.addCourse(high);
+        s.addTerm(t);
+
+        double termGpaBefore = t.getTermGPA();
+        double cumulativeBefore = s.getCumulativeGPA();
+
+        store.save(s);
+        Student loaded = store.loadStudent(s.getId());
+        assertNotNull(loaded);
+
+        Term lt = loaded.getTerms().get(0);
+        assertEquals(termGpaBefore, lt.getTermGPA(), 1e-9);
+        assertEquals(cumulativeBefore, loaded.getCumulativeGPA(), 1e-9);
     }
 }
