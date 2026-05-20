@@ -202,3 +202,25 @@
     -fx-background-color: #FFFFFF;
     -fx-background-radius: 20;
 }
+
+.aq-dialog .label {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+    -fx-text-fill: #1D1B20;
+}
+
+.aq-dialog .text-field {
+    -fx-background-radius: 8;
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 8;
+    -fx-padding: 6 10 6 10;
+}
+
+.aq-dialog .text-field:focused {
+    -fx-border-color: #89343B;
+    -fx-border-width: 2;
+}
+
+.policy-config-area {
+    -fx-padding: 8 0 0 0;
+}
