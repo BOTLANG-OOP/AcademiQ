@@ -14,9 +14,11 @@ import com.academiq.persistence.SqliteDataStore;
 
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -31,6 +33,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
@@ -1231,7 +1234,232 @@ public class App extends Application {
     }
 
     private VBox createDashboardPane() {
-        return createPlaceholder("Dashboard", "GPA overview and statistics");
+        Label header = new Label("Dashboard");
+        header.getStyleClass().add("section-header");
+
+        // --- Section 1: Cumulative GPA ---
+        Label cumulativeCaption = new Label("Cumulative GPA");
+        cumulativeCaption.getStyleClass().add("dashboard-caption");
+
+        Label cumulativeValue = new Label();
+        cumulativeValue.getStyleClass().add("dashboard-cumulative-value");
+        cumulativeValue.textProperty().bind(Bindings.createStringBinding(
+                () -> String.format("%.2f", student.getCumulativeGPA()),
+                student.cumulativeGPAProperty()));
+
+        ProgressBar cumulativeBar = new ProgressBar(0);
+        cumulativeBar.getStyleClass().add("dashboard-cumulative-bar");
+        cumulativeBar.setMaxWidth(Double.MAX_VALUE);
+        cumulativeBar.progressProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(0.0, Math.min(1.0, student.getCumulativeGPA() / 5.0)),
+                student.cumulativeGPAProperty()));
+
+        Runnable applyCumulativeColor = () -> {
+            cumulativeBar.getStyleClass().removeAll(
+                    "gpa-excellent", "gpa-good", "gpa-fair", "gpa-poor");
+            cumulativeValue.getStyleClass().removeAll(
+                    "gpa-text-excellent", "gpa-text-good", "gpa-text-fair", "gpa-text-poor");
+            double g = student.getCumulativeGPA();
+            String barClass = gpaColorClass(g);
+            cumulativeBar.getStyleClass().add(barClass);
+            cumulativeValue.getStyleClass().add("gpa-text-" + barClass.substring("gpa-".length()));
+        };
+        student.cumulativeGPAProperty().addListener((o, ov, nv) -> applyCumulativeColor.run());
+        applyCumulativeColor.run();
+
+        VBox cumulativeCard = new VBox(8, cumulativeCaption, cumulativeValue, cumulativeBar);
+        cumulativeCard.getStyleClass().add("dashboard-cumulative-card");
+
+        // --- Section 2: Per-term breakdown ---
+        Label termsHeader = new Label("Terms");
+        termsHeader.getStyleClass().add("dashboard-subheader");
+
+        Label noTermsLabel = new Label("No terms yet. Add a term in Courses to see GPA breakdown.");
+        noTermsLabel.getStyleClass().add("empty-prompt");
+        noTermsLabel.visibleProperty().bind(Bindings.isEmpty(student.getTerms()));
+        noTermsLabel.managedProperty().bind(noTermsLabel.visibleProperty());
+
+        ObjectProperty<Term> selectedTerm = new SimpleObjectProperty<>();
+
+        VBox termCards = new VBox(12);
+        termCards.getStyleClass().add("dashboard-term-cards");
+
+        Runnable rebuildTermCards = () -> {
+            termCards.getChildren().clear();
+            for (Term t : student.getTerms()) {
+                termCards.getChildren().add(createTermCard(t, selectedTerm));
+            }
+            Term cur = selectedTerm.get();
+            if (cur != null && !student.getTerms().contains(cur)) {
+                selectedTerm.set(null);
+            }
+        };
+        student.getTerms().addListener((ListChangeListener<Term>) c -> rebuildTermCards.run());
+        rebuildTermCards.run();
+
+        ScrollPane termScroll = new ScrollPane(termCards);
+        termScroll.setFitToWidth(true);
+        termScroll.getStyleClass().add("dashboard-scroll");
+        termScroll.setPrefHeight(280);
+
+        VBox termsSection = new VBox(8, termsHeader, noTermsLabel, termScroll);
+
+        // --- Section 3: Course-level detail (visible when a term is selected) ---
+        Label coursesHeader = new Label();
+        coursesHeader.getStyleClass().add("dashboard-subheader");
+        coursesHeader.textProperty().bind(Bindings.createStringBinding(() -> {
+            Term t = selectedTerm.get();
+            return t == null ? "Courses" : "Courses — " + t.getName();
+        }, selectedTerm));
+
+        VBox courseCards = new VBox(8);
+        courseCards.getStyleClass().add("dashboard-course-cards");
+
+        Label pickTermHint = new Label("Select a term above to view its courses");
+        pickTermHint.getStyleClass().add("empty-prompt");
+
+        ScrollPane courseScroll = new ScrollPane(courseCards);
+        courseScroll.setFitToWidth(true);
+        courseScroll.getStyleClass().add("dashboard-scroll");
+        courseScroll.setPrefHeight(220);
+
+        final ListChangeListener<Course> coursesListener = c -> rebuildCourseCards(selectedTerm.get(), courseCards);
+        final Term[] boundCoursesTerm = { null };
+        Runnable rebindCourses = () -> {
+            Term old = boundCoursesTerm[0];
+            Term cur = selectedTerm.get();
+            if (old != null) old.getCourses().removeListener(coursesListener);
+            boundCoursesTerm[0] = cur;
+            if (cur != null) cur.getCourses().addListener(coursesListener);
+            rebuildCourseCards(cur, courseCards);
+        };
+        selectedTerm.addListener((o, ov, nv) -> rebindCourses.run());
+        rebindCourses.run();
+
+        pickTermHint.visibleProperty().bind(selectedTerm.isNull());
+        pickTermHint.managedProperty().bind(pickTermHint.visibleProperty());
+        courseScroll.visibleProperty().bind(selectedTerm.isNotNull());
+        courseScroll.managedProperty().bind(courseScroll.visibleProperty());
+
+        VBox coursesSection = new VBox(8, coursesHeader, pickTermHint, courseScroll);
+
+        VBox pane = new VBox(16, header, cumulativeCard, termsSection, coursesSection);
+        pane.setPadding(new Insets(16));
+        pane.getStyleClass().add("dashboard-pane");
+        VBox.setVgrow(termsSection, Priority.SOMETIMES);
+        VBox.setVgrow(coursesSection, Priority.SOMETIMES);
+        return pane;
+    }
+
+    private VBox createTermCard(Term term, ObjectProperty<Term> selectedTerm) {
+        Label name = new Label(term.getName() + " — " + term.getSemester() + " " + term.getYear());
+        name.getStyleClass().add("dashboard-term-name");
+
+        Label gpaLabel = new Label();
+        gpaLabel.getStyleClass().add("dashboard-term-gpa");
+        gpaLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> String.format("GPA %.2f", term.getTermGPA()),
+                term.termGPAProperty()));
+
+        Label unitsLabel = new Label();
+        unitsLabel.getStyleClass().add("dashboard-term-units");
+        unitsLabel.textProperty().bind(Bindings.createStringBinding(
+                () -> term.getTotalUnits() + " units",
+                term.getCourses(), term.termGPAProperty()));
+
+        HBox topRow = new HBox(12, name, new Region(), gpaLabel, unitsLabel);
+        HBox.setHgrow(topRow.getChildren().get(1), Priority.ALWAYS);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        ProgressBar bar = new ProgressBar(0);
+        bar.getStyleClass().add("dashboard-term-bar");
+        bar.setMaxWidth(Double.MAX_VALUE);
+        bar.progressProperty().bind(Bindings.createDoubleBinding(
+                () -> Math.max(0.0, Math.min(1.0, term.getTermGPA() / 5.0)),
+                term.termGPAProperty()));
+
+        Runnable applyColor = () -> {
+            bar.getStyleClass().removeAll("gpa-excellent", "gpa-good", "gpa-fair", "gpa-poor");
+            bar.getStyleClass().add(gpaColorClass(term.getTermGPA()));
+        };
+        term.termGPAProperty().addListener((o, ov, nv) -> applyColor.run());
+        applyColor.run();
+
+        Label codes = new Label();
+        codes.getStyleClass().add("dashboard-term-codes");
+        codes.setWrapText(true);
+        codes.textProperty().bind(Bindings.createStringBinding(() -> {
+            if (term.getCourses().isEmpty()) return "No courses";
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < term.getCourses().size(); i++) {
+                if (i > 0) sb.append(" · ");
+                sb.append(term.getCourses().get(i).getCode());
+            }
+            return sb.toString();
+        }, term.getCourses()));
+
+        VBox card = new VBox(6, topRow, bar, codes);
+        card.getStyleClass().add("dashboard-term-card");
+        card.setOnMouseClicked(e -> selectedTerm.set(term));
+
+        Runnable applySelectionStyle = () -> {
+            boolean isSelected = selectedTerm.get() == term;
+            if (isSelected && !card.getStyleClass().contains("dashboard-term-card-selected")) {
+                card.getStyleClass().add("dashboard-term-card-selected");
+            } else if (!isSelected) {
+                card.getStyleClass().remove("dashboard-term-card-selected");
+            }
+        };
+        selectedTerm.addListener((o, ov, nv) -> applySelectionStyle.run());
+        applySelectionStyle.run();
+
+        return card;
+    }
+
+    private static void rebuildCourseCards(Term term, VBox container) {
+        container.getChildren().clear();
+        if (term == null) return;
+        for (Course course : term.getCourses()) {
+            container.getChildren().add(createCourseDetailCard(course));
+        }
+    }
+
+    private static VBox createCourseDetailCard(Course course) {
+        Label title = new Label(course.getName() + " (" + course.getCode() + ")");
+        title.getStyleClass().add("dashboard-course-title");
+
+        Label units = new Label(course.getUnits() + " units");
+        units.getStyleClass().add("dashboard-course-units");
+
+        HBox topRow = new HBox(12, title, new Region(), units);
+        HBox.setHgrow(topRow.getChildren().get(1), Priority.ALWAYS);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label grade = new Label();
+        grade.getStyleClass().add("dashboard-course-grade");
+        grade.textProperty().bind(Bindings.createStringBinding(
+                () -> String.format("%.2f", course.getFinalGrade()),
+                course.finalGradeProperty()));
+
+        Label letter = new Label();
+        letter.getStyleClass().add("dashboard-course-letter");
+        letter.textProperty().bind(Bindings.createStringBinding(
+                () -> letterGradeFor(course.getFinalGrade()),
+                course.finalGradeProperty()));
+
+        HBox gradeRow = new HBox(10, grade, letter);
+        gradeRow.setAlignment(Pos.BASELINE_LEFT);
+
+        VBox card = new VBox(4, topRow, gradeRow);
+        card.getStyleClass().add("dashboard-course-card");
+        return card;
+    }
+
+    private static String gpaColorClass(double gpa) {
+        if (gpa >= 4.0) return "gpa-excellent";
+        if (gpa >= 3.0) return "gpa-good";
+        if (gpa >= 2.0) return "gpa-fair";
+        return "gpa-poor";
     }
 
     private VBox createSchedulePane() {
