@@ -12,8 +12,10 @@ import com.academiq.persistence.SqliteDataStore;
 
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
@@ -32,6 +34,7 @@ import javafx.scene.control.Spinner;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -833,8 +836,14 @@ public class App extends Application {
         buttonBar.setAlignment(Pos.CENTER_LEFT);
         buttonBar.getStyleClass().add("course-button-bar");
 
-        VBox tableSection = new VBox(12, table, buttonBar);
-        VBox.setVgrow(table, Priority.ALWAYS);
+        VBox breakdownPanel = createGradeBreakdownPanel(courseCombo.getSelectionModel().selectedItemProperty());
+
+        HBox tableAndBreakdown = new HBox(16, table, breakdownPanel);
+        HBox.setHgrow(table, Priority.ALWAYS);
+        tableAndBreakdown.setAlignment(Pos.TOP_LEFT);
+
+        VBox tableSection = new VBox(12, tableAndBreakdown, buttonBar);
+        VBox.setVgrow(tableAndBreakdown, Priority.ALWAYS);
 
         Label noCourseSelected = new Label("Select a course to enter grades");
         noCourseSelected.getStyleClass().add("empty-prompt");
@@ -1034,6 +1043,100 @@ public class App extends Application {
                 setGraphic(null);
             }
         }
+    }
+
+    private VBox createGradeBreakdownPanel(ReadOnlyObjectProperty<Course> selectedCourse) {
+        Label header = new Label("Grade Breakdown");
+        header.getStyleClass().add("breakdown-header");
+
+        Label policyTypeLabel = new Label();
+        policyTypeLabel.getStyleClass().add("breakdown-policy-type");
+
+        HBox headerRow = new HBox(12, header, policyTypeLabel);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+
+        TextArea breakdownArea = new TextArea();
+        breakdownArea.setEditable(false);
+        breakdownArea.setWrapText(false);
+        breakdownArea.getStyleClass().add("breakdown-text");
+        breakdownArea.setPrefRowCount(10);
+
+        Label finalGradeCaption = new Label("Final Grade");
+        finalGradeCaption.getStyleClass().add("breakdown-caption");
+
+        Label finalGradeLabel = new Label("—");
+        finalGradeLabel.getStyleClass().add("breakdown-final-grade");
+
+        Label letterGradeLabel = new Label("");
+        letterGradeLabel.getStyleClass().add("breakdown-letter-grade");
+
+        HBox gradeRow = new HBox(12, finalGradeLabel, letterGradeLabel);
+        gradeRow.setAlignment(Pos.BASELINE_LEFT);
+
+        VBox panel = new VBox(12, headerRow, breakdownArea, finalGradeCaption, gradeRow);
+        panel.getStyleClass().add("breakdown-card");
+        panel.setPrefWidth(340);
+        panel.setMinWidth(300);
+        panel.setMaxWidth(380);
+
+        ChangeListener<Number> gradeListener = (obs, ov, nv) -> {
+            Course c = selectedCourse.get();
+            if (c == null) return;
+            breakdownArea.setText(c.getGradeBreakdown());
+            double g = nv.doubleValue();
+            finalGradeLabel.setText(String.format("%.2f", g));
+            letterGradeLabel.setText(letterGradeFor(g));
+        };
+
+        final Course[] bound = { null };
+        Runnable rebind = () -> {
+            Course old = bound[0];
+            Course cur = selectedCourse.get();
+            if (old != null) {
+                old.finalGradeProperty().removeListener(gradeListener);
+            }
+            bound[0] = cur;
+            if (cur == null) {
+                breakdownArea.clear();
+                policyTypeLabel.setText("");
+                finalGradeLabel.setText("—");
+                letterGradeLabel.setText("");
+                return;
+            }
+            cur.finalGradeProperty().addListener(gradeListener);
+            policyTypeLabel.setText(policyTypeLabelFor(cur.getGradingPolicy()));
+            breakdownArea.setText(cur.getGradeBreakdown());
+            double g = cur.getFinalGrade();
+            finalGradeLabel.setText(String.format("%.2f", g));
+            letterGradeLabel.setText(letterGradeFor(g));
+        };
+        selectedCourse.addListener((o, ov, nv) -> rebind.run());
+        rebind.run();
+
+        panel.visibleProperty().bind(selectedCourse.isNotNull());
+        panel.managedProperty().bind(panel.visibleProperty());
+
+        return panel;
+    }
+
+    private static String policyTypeLabelFor(GradingPolicy p) {
+        if (p instanceof WeightedGrading) return "Weighted";
+        if (p instanceof PointsBasedGrading) return "Points-Based";
+        if (p instanceof CurvedGrading) return "Curved";
+        return "";
+    }
+
+    private static String letterGradeFor(double g) {
+        if (g >= 97) return "1.00";
+        if (g >= 94) return "1.25";
+        if (g >= 91) return "1.50";
+        if (g >= 88) return "1.75";
+        if (g >= 85) return "2.00";
+        if (g >= 82) return "2.25";
+        if (g >= 79) return "2.50";
+        if (g >= 76) return "2.75";
+        if (g >= 75) return "3.00";
+        return "5.00";
     }
 
     private VBox createDashboardPane() {
