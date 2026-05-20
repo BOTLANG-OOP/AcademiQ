@@ -288,3 +288,66 @@
     -fx-font-weight: 600;
     -fx-text-fill: #89343B;
 }
+
+/* Grade Projection */
+.projection-section {
+    -fx-padding: 4 0 0 0;
+}
+
+.projection-header {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #1D1B20;
+}
+
+.projection-target-label {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+    -fx-text-fill: #828282;
+}
+
+.projection-target-field {
+    -fx-background-radius: 8;
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 6 10 6 10;
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+    -fx-text-fill: #1D1B20;
+}
+
+.projection-target-field:focused {
+    -fx-border-color: #89343B;
+    -fx-border-width: 2;
+}
+
+.projection-result {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 8;
+    -fx-text-fill: #1D1B20;
+}
+
+.projection-good {
+    -fx-text-fill: #2E7D32;
+    -fx-background-color: rgba(46, 125, 50, 0.10);
+}
+
+.projection-warn {
+    -fx-text-fill: #B58A00;
+    -fx-background-color: rgba(249, 168, 37, 0.14);
+}
+
+.projection-hard {
+    -fx-text-fill: #ED6C02;
+    -fx-background-color: rgba(237, 108, 2, 0.12);
+}
+
+.projection-impossible {
+    -fx-text-fill: #C62828;
+    -fx-background-color: rgba(198, 40, 40, 0.10);
+}

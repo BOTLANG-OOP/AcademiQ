@@ -1073,7 +1073,10 @@ public class App extends Application {
         HBox gradeRow = new HBox(12, finalGradeLabel, letterGradeLabel);
         gradeRow.setAlignment(Pos.BASELINE_LEFT);
 
-        VBox panel = new VBox(12, headerRow, breakdownArea, finalGradeCaption, gradeRow);
+        VBox projectionSection = createGradeProjectionSection(selectedCourse);
+
+        VBox panel = new VBox(12, headerRow, breakdownArea, finalGradeCaption, gradeRow,
+                new Separator(), projectionSection);
         panel.getStyleClass().add("breakdown-card");
         panel.setPrefWidth(340);
         panel.setMinWidth(300);
@@ -1117,6 +1120,87 @@ public class App extends Application {
         panel.managedProperty().bind(panel.visibleProperty());
 
         return panel;
+    }
+
+    private VBox createGradeProjectionSection(ReadOnlyObjectProperty<Course> selectedCourse) {
+        Label header = new Label("What Do I Need?");
+        header.getStyleClass().add("projection-header");
+
+        Label targetLabel = new Label("Target grade (0–100):");
+        targetLabel.getStyleClass().add("projection-target-label");
+
+        TextField targetField = new TextField("90");
+        targetField.getStyleClass().add("projection-target-field");
+        targetField.setPrefWidth(80);
+
+        HBox inputRow = new HBox(8, targetLabel, targetField);
+        inputRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label resultLabel = new Label();
+        resultLabel.getStyleClass().add("projection-result");
+        resultLabel.setWrapText(true);
+        resultLabel.setMaxWidth(Double.MAX_VALUE);
+
+        VBox section = new VBox(8, header, inputRow, resultLabel);
+        section.getStyleClass().add("projection-section");
+
+        Runnable update = () -> {
+            resultLabel.getStyleClass().removeAll(
+                    "projection-good", "projection-warn", "projection-hard", "projection-impossible");
+            Course c = selectedCourse.get();
+            if (c == null) {
+                resultLabel.setText("");
+                return;
+            }
+            String raw = targetField.getText() == null ? "" : targetField.getText().trim();
+            if (raw.isEmpty()) {
+                resultLabel.setText("Enter a target grade");
+                return;
+            }
+            double target;
+            try {
+                target = Double.parseDouble(raw);
+            } catch (NumberFormatException ex) {
+                resultLabel.setText("Enter a number between 0 and 100");
+                resultLabel.getStyleClass().add("projection-warn");
+                return;
+            }
+            if (target < 0 || target > 100) {
+                resultLabel.setText("Enter a number between 0 and 100");
+                resultLabel.getStyleClass().add("projection-warn");
+                return;
+            }
+            double needed = c.whatDoINeed(target);
+            if (needed == 0.0) {
+                resultLabel.setText("You've already achieved this grade!");
+                resultLabel.getStyleClass().add("projection-good");
+            } else if (needed < 0) {
+                resultLabel.setText("Impossible — would require more than 100%");
+                resultLabel.getStyleClass().add("projection-impossible");
+            } else {
+                resultLabel.setText(String.format("You need %.1f%% on remaining assessments", needed));
+                if (needed <= 80) resultLabel.getStyleClass().add("projection-good");
+                else if (needed <= 95) resultLabel.getStyleClass().add("projection-warn");
+                else resultLabel.getStyleClass().add("projection-hard");
+            }
+        };
+
+        targetField.textProperty().addListener((o, ov, nv) -> update.run());
+
+        ChangeListener<Number> gradeListener = (o, ov, nv) -> update.run();
+        final Course[] bound = { null };
+        Runnable rebind = () -> {
+            Course old = bound[0];
+            Course cur = selectedCourse.get();
+            if (old != null) old.finalGradeProperty().removeListener(gradeListener);
+            bound[0] = cur;
+            if (cur != null) cur.finalGradeProperty().addListener(gradeListener);
+            update.run();
+        };
+        selectedCourse.addListener((o, ov, nv) -> rebind.run());
+        rebind.run();
+
+        return section;
     }
 
     private static String policyTypeLabelFor(GradingPolicy p) {
