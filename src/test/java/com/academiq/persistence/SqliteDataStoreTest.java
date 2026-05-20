@@ -309,7 +309,6 @@ class SqliteDataStoreTest {
         Student loaded = store.loadStudent(s.getId());
         assertNotNull(loaded);
 
-        // capture GPAs after load
         List<Double> termGpasAfter = new ArrayList<>();
         Map<String, Double> courseGradesAfter = new HashMap<>();
         for (int ti = 0; ti < loaded.getTerms().size(); ti++) {
