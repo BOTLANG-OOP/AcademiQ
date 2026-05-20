@@ -1,5 +1,9 @@
 package com.academiq;
 
+import com.academiq.grading.CurvedGrading;
+import com.academiq.grading.GradingPolicy;
+import com.academiq.grading.PointsBasedGrading;
+import com.academiq.grading.WeightedGrading;
 import com.academiq.model.Course;
 import com.academiq.model.Student;
 import com.academiq.model.Term;
@@ -279,12 +283,24 @@ public class App extends Application {
         Button addCourseButton = new Button("Add Course");
         addCourseButton.getStyleClass().addAll("aq-button", "aq-button-primary");
         addCourseButton.disableProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
-        addCourseButton.setOnAction(e -> System.out.println("Add Course dialog — to be implemented in AQ-025"));
+        addCourseButton.setOnAction(e -> {
+            Term term = termCombo.getSelectionModel().getSelectedItem();
+            if (term == null) return;
+            showCourseDialog(null).ifPresent(course -> {
+                term.addCourse(course);
+                courseTable.getSelectionModel().select(course);
+                store.scheduleSave(student);
+            });
+        });
 
         Button editCourseButton = new Button("Edit Course");
         editCourseButton.getStyleClass().addAll("aq-button", "aq-button-secondary");
         editCourseButton.disableProperty().bind(courseTable.getSelectionModel().selectedItemProperty().isNull());
-        editCourseButton.setOnAction(e -> System.out.println("Edit Course dialog — to be implemented in AQ-025"));
+        editCourseButton.setOnAction(e -> {
+            Course selected = courseTable.getSelectionModel().getSelectedItem();
+            if (selected == null) return;
+            showCourseDialog(selected).ifPresent(c -> store.scheduleSave(student));
+        });
 
         Button removeCourseButton = new Button("Remove Course");
         removeCourseButton.getStyleClass().addAll("aq-button", "aq-button-danger");
@@ -383,6 +399,282 @@ public class App extends Application {
         });
 
         return dialog.showAndWait();
+    }
+
+    private Optional<Course> showCourseDialog(Course existing) {
+        boolean editing = existing != null;
+
+        Dialog<Course> dialog = new Dialog<>();
+        dialog.setTitle(editing ? "Edit Course" : "Add Course");
+        dialog.setHeaderText(editing ? "Edit course grading policy" : "New course");
+
+        ButtonType okType = new ButtonType(editing ? "Save" : "Add", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
+
+        TextField nameField = new TextField(editing ? existing.getName() : "");
+        nameField.setPromptText("e.g. Data Structures");
+        TextField codeField = new TextField(editing ? existing.getCode() : "");
+        codeField.setPromptText("e.g. CS201");
+        Spinner<Integer> unitsSpinner = new Spinner<>(1, 6, editing ? existing.getUnits() : 3);
+        unitsSpinner.setEditable(true);
+
+        if (editing) {
+            nameField.setDisable(true);
+            codeField.setDisable(true);
+            unitsSpinner.setDisable(true);
+        }
+
+        ComboBox<String> policyTypeCombo = new ComboBox<>();
+        policyTypeCombo.getItems().addAll("Weighted", "Points-Based", "Curved");
+
+        VBox configArea = new VBox(8);
+        configArea.getStyleClass().add("policy-config-area");
+
+        PolicyEditor topEditor = new PolicyEditor(policyTypeCombo, configArea, existing == null ? null : existing.getGradingPolicy(), false);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.add(new Label("Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("Code:"), 0, 1);
+        grid.add(codeField, 1, 1);
+        grid.add(new Label("Units:"), 0, 2);
+        grid.add(unitsSpinner, 1, 2);
+        grid.add(new Label("Grading:"), 0, 3);
+        grid.add(policyTypeCombo, 1, 3);
+        grid.add(configArea, 0, 4, 2, 1);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        Runnable updateOk = () -> {
+            boolean fieldsValid = editing
+                    || (!nameField.getText().trim().isEmpty() && !codeField.getText().trim().isEmpty());
+            okButton.setDisable(!(fieldsValid && topEditor.isValid()));
+        };
+        nameField.textProperty().addListener((o, ov, nv) -> updateOk.run());
+        codeField.textProperty().addListener((o, ov, nv) -> updateOk.run());
+        topEditor.setOnValidityChanged(updateOk);
+        updateOk.run();
+
+        dialog.setResultConverter(bt -> {
+            if (bt != okType) return null;
+            GradingPolicy policy = topEditor.buildPolicy();
+            if (policy == null) return null;
+            if (editing) {
+                existing.setGradingPolicy(policy);
+                return existing;
+            }
+            return new Course(nameField.getText().trim(), codeField.getText().trim(),
+                    unitsSpinner.getValue(), policy);
+        });
+
+        return dialog.showAndWait();
+    }
+
+    /**
+     * Editor for a grading policy type. Manages the dynamic config area and can be
+     * nested inside a CurvedGrading editor as the base policy.
+     */
+    private static final class PolicyEditor {
+        private final ComboBox<String> typeCombo;
+        private final VBox container;
+        private final boolean nested;
+        private Runnable onValidityChanged = () -> {};
+
+        // Weighted state
+        private final VBox weightedRows = new VBox(6);
+        private final Label weightedTotal = new Label();
+
+        // Points state
+        private TextField pointsField;
+
+        // Curved state
+        private TextField curveField;
+        private PolicyEditor baseEditor;
+
+        PolicyEditor(ComboBox<String> typeCombo, VBox container, GradingPolicy initial, boolean nested) {
+            this.typeCombo = typeCombo;
+            this.container = container;
+            this.nested = nested;
+
+            typeCombo.getSelectionModel().selectedItemProperty().addListener((o, ov, nv) -> rebuildConfig());
+
+            String initialType = "Weighted";
+            if (initial instanceof PointsBasedGrading) initialType = "Points-Based";
+            else if (initial instanceof CurvedGrading) initialType = "Curved";
+
+            typeCombo.getSelectionModel().select(initialType);
+            // selecting same value as default doesn't fire listener; rebuild explicitly
+            rebuildConfigWithInitial(initial);
+        }
+
+        void setOnValidityChanged(Runnable r) {
+            this.onValidityChanged = r;
+        }
+
+        private void rebuildConfig() {
+            rebuildConfigWithInitial(null);
+        }
+
+        private void rebuildConfigWithInitial(GradingPolicy initial) {
+            container.getChildren().clear();
+            String type = typeCombo.getSelectionModel().getSelectedItem();
+            if (type == null) type = "Weighted";
+
+            switch (type) {
+                case "Weighted" -> buildWeighted(initial instanceof WeightedGrading w ? w : null);
+                case "Points-Based" -> buildPoints(initial instanceof PointsBasedGrading p ? p : null);
+                case "Curved" -> buildCurved(initial instanceof CurvedGrading c ? c : null);
+            }
+            onValidityChanged.run();
+        }
+
+        private void buildWeighted(WeightedGrading initial) {
+            weightedRows.getChildren().clear();
+            addWeightedRow("Exams", "0.6");
+            addWeightedRow("Homework", "0.4");
+
+            Button addRow = new Button("Add Category");
+            addRow.getStyleClass().addAll("aq-button", "aq-button-secondary");
+            addRow.setOnAction(e -> addWeightedRow("", ""));
+
+            recomputeWeightedTotal();
+            container.getChildren().addAll(new Label("Category weights:"), weightedRows, addRow, weightedTotal);
+        }
+
+        private void addWeightedRow(String catName, String weight) {
+            TextField nameF = new TextField(catName);
+            nameF.setPromptText("Category");
+            TextField weightF = new TextField(weight);
+            weightF.setPromptText("0.5");
+            weightF.setPrefWidth(80);
+            Button remove = new Button("Remove");
+            remove.getStyleClass().addAll("aq-button", "aq-button-secondary");
+            HBox row = new HBox(8, nameF, weightF, remove);
+            row.setAlignment(Pos.CENTER_LEFT);
+            remove.setOnAction(e -> {
+                weightedRows.getChildren().remove(row);
+                recomputeWeightedTotal();
+                onValidityChanged.run();
+            });
+            weightF.textProperty().addListener((o, ov, nv) -> {
+                recomputeWeightedTotal();
+                onValidityChanged.run();
+            });
+            nameF.textProperty().addListener((o, ov, nv) -> onValidityChanged.run());
+            weightedRows.getChildren().add(row);
+        }
+
+        private void recomputeWeightedTotal() {
+            double total = 0.0;
+            for (var node : weightedRows.getChildren()) {
+                if (node instanceof HBox row && row.getChildren().size() >= 2
+                        && row.getChildren().get(1) instanceof TextField wf) {
+                    try {
+                        total += Double.parseDouble(wf.getText().trim());
+                    } catch (NumberFormatException ignored) {
+                        // skip
+                    }
+                }
+            }
+            weightedTotal.setText(String.format("Total: %.2f", total));
+            if (Math.abs(total - 1.0) > 0.0001) {
+                weightedTotal.setStyle("-fx-text-fill: #C62828;");
+            } else {
+                weightedTotal.setStyle("-fx-text-fill: #2E7D32;");
+            }
+        }
+
+        private void buildPoints(PointsBasedGrading initial) {
+            pointsField = new TextField("100.0");
+            pointsField.textProperty().addListener((o, ov, nv) -> onValidityChanged.run());
+            HBox row = new HBox(8, new Label("Total Possible Points:"), pointsField);
+            row.setAlignment(Pos.CENTER_LEFT);
+            container.getChildren().add(row);
+        }
+
+        private void buildCurved(CurvedGrading initial) {
+            if (nested) {
+                // Should never happen — UI prevents nested Curved selection.
+                container.getChildren().add(new Label("Nested curved policies are not supported."));
+                return;
+            }
+            curveField = new TextField("5.0");
+            curveField.textProperty().addListener((o, ov, nv) -> onValidityChanged.run());
+            HBox curveRow = new HBox(8, new Label("Curve Amount:"), curveField);
+            curveRow.setAlignment(Pos.CENTER_LEFT);
+
+            ComboBox<String> baseCombo = new ComboBox<>();
+            baseCombo.getItems().addAll("Weighted", "Points-Based");
+            VBox baseConfig = new VBox(8);
+            baseEditor = new PolicyEditor(baseCombo, baseConfig, null, true);
+            baseEditor.setOnValidityChanged(onValidityChanged);
+
+            HBox baseTypeRow = new HBox(8, new Label("Base policy:"), baseCombo);
+            baseTypeRow.setAlignment(Pos.CENTER_LEFT);
+
+            container.getChildren().addAll(curveRow, baseTypeRow, baseConfig);
+        }
+
+        boolean isValid() {
+            String type = typeCombo.getSelectionModel().getSelectedItem();
+            if (type == null) return false;
+            return switch (type) {
+                case "Weighted" -> isWeightedValid();
+                case "Points-Based" -> parseDouble(pointsField) != null && parseDouble(pointsField) > 0;
+                case "Curved" -> parseDouble(curveField) != null && baseEditor != null && baseEditor.isValid();
+                default -> false;
+            };
+        }
+
+        private boolean isWeightedValid() {
+            if (weightedRows.getChildren().isEmpty()) return false;
+            double total = 0.0;
+            for (var node : weightedRows.getChildren()) {
+                if (!(node instanceof HBox row) || row.getChildren().size() < 2) return false;
+                if (!(row.getChildren().get(0) instanceof TextField nameF)) return false;
+                if (!(row.getChildren().get(1) instanceof TextField weightF)) return false;
+                if (nameF.getText().trim().isEmpty()) return false;
+                Double w = parseDouble(weightF);
+                if (w == null || w <= 0) return false;
+                total += w;
+            }
+            return Math.abs(total - 1.0) <= 0.0001;
+        }
+
+        GradingPolicy buildPolicy() {
+            if (!isValid()) return null;
+            String type = typeCombo.getSelectionModel().getSelectedItem();
+            return switch (type) {
+                case "Weighted" -> {
+                    java.util.LinkedHashMap<String, Double> map = new java.util.LinkedHashMap<>();
+                    for (var node : weightedRows.getChildren()) {
+                        HBox row = (HBox) node;
+                        String name = ((TextField) row.getChildren().get(0)).getText().trim();
+                        double w = Double.parseDouble(((TextField) row.getChildren().get(1)).getText().trim());
+                        map.put(name, w);
+                    }
+                    yield new WeightedGrading(map);
+                }
+                case "Points-Based" -> new PointsBasedGrading(Double.parseDouble(pointsField.getText().trim()));
+                case "Curved" -> new CurvedGrading(Double.parseDouble(curveField.getText().trim()),
+                        baseEditor.buildPolicy());
+                default -> null;
+            };
+        }
+
+        private static Double parseDouble(TextField f) {
+            if (f == null) return null;
+            try {
+                return Double.parseDouble(f.getText().trim());
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
     }
 
     private VBox createGradeEntryPane() {
