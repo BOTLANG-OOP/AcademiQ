@@ -59,3 +59,73 @@
     -fx-text-fill: #8D99AE;
     -fx-padding: 8 0 0 0;
 }
+
+/* Section header (Heading/H5 SemiBold) */
+.section-header {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 24px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #1D1B20;
+}
+
+/* Term management controls */
+.term-controls {
+    -fx-padding: 4 0 4 0;
+}
+
+.term-combo {
+    -fx-background-radius: 8;
+    -fx-border-color: #E0E0E0;
+    -fx-border-radius: 8;
+    -fx-pref-width: 260;
+}
+
+/* Buttons (per design tokens) */
+.aq-button {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 20;
+    -fx-padding: 10 18 10 18;
+    -fx-cursor: hand;
+}
+
+.aq-button-primary {
+    -fx-background-color: #89343B;
+    -fx-text-fill: white;
+}
+
+.aq-button-primary:hover {
+    -fx-background-color: derive(#89343B, -8%);
+}
+
+.aq-button-danger {
+    -fx-background-color: #C62828;
+    -fx-text-fill: white;
+}
+
+.aq-button-danger:hover {
+    -fx-background-color: derive(#C62828, -8%);
+}
+
+.aq-button:disabled {
+    -fx-opacity: 0.5;
+}
+
+/* Empty state prompt */
+.empty-prompt {
+    -fx-font-family: "Inter", "Segoe UI", "System";
+    -fx-font-size: 16px;
+    -fx-text-fill: #828282;
+    -fx-padding: 24 0 0 0;
+}
+
+.courses-body {
+    -fx-alignment: TOP_LEFT;
+}
+
+/* Dialog */
+.aq-dialog {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 20;
+}
