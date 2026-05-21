@@ -13,6 +13,7 @@ import com.academiq.model.TimeSlot;
 import com.academiq.persistence.SqliteDataStore;
 
 import atlantafx.base.theme.PrimerLight;
+import atlantafx.base.theme.Styles;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -330,7 +331,7 @@ public class App extends Application {
         }
 
         Button addTermButton = new Button("Add Term");
-        addTermButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addTermButton.getStyleClass().addAll(Styles.ACCENT);
         addTermButton.setOnAction(e -> {
             Optional<Term> created = showAddTermDialog();
             created.ifPresent(t -> {
@@ -341,7 +342,7 @@ public class App extends Application {
         });
 
         Button removeTermButton = new Button("Remove Term");
-        removeTermButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeTermButton.getStyleClass().addAll(Styles.DANGER);
         removeTermButton.disableProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
         removeTermButton.setOnAction(e -> {
             Term selected = termCombo.getSelectionModel().getSelectedItem();
@@ -418,7 +419,7 @@ public class App extends Application {
         rebindTable.run();
 
         Button addCourseButton = new Button("Add Course");
-        addCourseButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addCourseButton.getStyleClass().addAll(Styles.ACCENT);
         addCourseButton.disableProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
         addCourseButton.setOnAction(e -> {
             Term term = termCombo.getSelectionModel().getSelectedItem();
@@ -431,7 +432,7 @@ public class App extends Application {
         });
 
         Button editCourseButton = new Button("Edit Course");
-        editCourseButton.getStyleClass().addAll("aq-button", "aq-button-secondary");
+        editCourseButton.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
         editCourseButton.disableProperty().bind(courseTable.getSelectionModel().selectedItemProperty().isNull());
         editCourseButton.setOnAction(e -> {
             Course selected = courseTable.getSelectionModel().getSelectedItem();
@@ -440,7 +441,7 @@ public class App extends Application {
         });
 
         Button removeCourseButton = new Button("Remove Course");
-        removeCourseButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeCourseButton.getStyleClass().addAll(Styles.DANGER);
         removeCourseButton.disableProperty().bind(courseTable.getSelectionModel().selectedItemProperty().isNull());
         removeCourseButton.setOnAction(e -> {
             Course selected = courseTable.getSelectionModel().getSelectedItem();
@@ -721,7 +722,7 @@ public class App extends Application {
             addWeightedRow("Homework", "0.4");
 
             Button addRow = new Button("Add Category");
-            addRow.getStyleClass().addAll("aq-button", "aq-button-secondary");
+            addRow.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
             addRow.setOnAction(e -> addWeightedRow("", ""));
 
             recomputeWeightedTotal();
@@ -735,7 +736,7 @@ public class App extends Application {
             weightF.setPromptText("0.5");
             weightF.setPrefWidth(80);
             Button remove = new Button("Remove");
-            remove.getStyleClass().addAll("aq-button", "aq-button-secondary");
+            remove.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
             HBox row = new HBox(8, nameF, weightF, remove);
             row.setAlignment(Pos.CENTER_LEFT);
             remove.setOnAction(e -> {
@@ -1005,7 +1006,7 @@ public class App extends Application {
         rebindTable.run();
 
         Button addButton = new Button("Add Assessment");
-        addButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addButton.getStyleClass().addAll(Styles.ACCENT);
         addButton.disableProperty().bind(courseCombo.getSelectionModel().selectedItemProperty().isNull());
         addButton.setOnAction(e -> {
             Course course = courseCombo.getSelectionModel().getSelectedItem();
@@ -1018,7 +1019,7 @@ public class App extends Application {
         });
 
         Button removeButton = new Button("Remove Assessment");
-        removeButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeButton.getStyleClass().addAll(Styles.DANGER);
         removeButton.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
         removeButton.setOnAction(e -> {
             Course course = courseCombo.getSelectionModel().getSelectedItem();
@@ -1926,7 +1927,7 @@ public class App extends Application {
         table.getColumns().addAll(dayCol, startCol, endCol, roomCol);
 
         Button addButton = new Button("Add Time Slot");
-        addButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addButton.getStyleClass().addAll(Styles.ACCENT);
         addButton.setOnAction(e -> showTimeSlotDialog().ifPresent(ts -> {
             course.addTimeSlot(ts);
             table.getSelectionModel().select(ts);
@@ -1934,7 +1935,7 @@ public class App extends Application {
         }));
 
         Button removeButton = new Button("Remove");
-        removeButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeButton.getStyleClass().addAll(Styles.DANGER);
         removeButton.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
         removeButton.setOnAction(e -> {
             TimeSlot sel = table.getSelectionModel().getSelectedItem();
