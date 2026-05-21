@@ -387,6 +387,108 @@ class SqliteDataStoreTest {
     }
 
     @Test
+    void testOrphanCourseDeletedOnSave() throws Exception {
+        Student s = buildSampleStudent();
+        store.save(s);
+        assertEquals(2, countRows("courses"));
+
+        Term term = s.getTerms().get(0);
+        Course toRemove = findCourseByCode(term, "CS101");
+        assertNotNull(toRemove);
+        term.removeCourse(toRemove);
+
+        store.save(s);
+
+        Student reloaded = store.loadStudent("stu-1");
+        assertEquals(1, reloaded.getTerms().get(0).getCourses().size());
+        assertEquals("MATH101", reloaded.getTerms().get(0).getCourses().get(0).getCode());
+
+        assertEquals(1, countRows("courses"));
+        assertEquals(2, countRows("assessments"));
+        assertEquals(1, countRows("time_slots"));
+    }
+
+    @Test
+    void testOrphanAssessmentDeletedOnSave() throws Exception {
+        Student s = new Student("Ann", "stu-oa");
+        Term t = new Term("T", 2026, "S");
+        WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
+        Course c = new Course("X", "X1", 3, wg);
+        c.addAssessment(new Assessment("A1", "Exams", 80.0, 100.0, 1.0, LocalDate.of(2026, 1, 1)));
+        c.addAssessment(new Assessment("A2", "Exams", 70.0, 100.0, 1.0, LocalDate.of(2026, 1, 2)));
+        c.addAssessment(new Assessment("A3", "Exams", 60.0, 100.0, 1.0, LocalDate.of(2026, 1, 3)));
+        t.addCourse(c);
+        s.addTerm(t);
+        store.save(s);
+        assertEquals(3, countRows("assessments"));
+
+        c.removeAssessment(c.getAssessments().get(1));
+        store.save(s);
+
+        assertEquals(2, countRows("assessments"));
+        Student loaded = store.loadStudent("stu-oa");
+        assertEquals(2, loaded.getTerms().get(0).getCourses().get(0).getAssessments().size());
+    }
+
+    @Test
+    void testOrphanTimeSlotDeletedOnSave() throws Exception {
+        Student s = new Student("Tim", "stu-ot");
+        Term t = new Term("T", 2026, "S");
+        WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
+        Course c = new Course("X", "X1", 3, wg);
+        c.addTimeSlot(new TimeSlot(DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(9, 0), "R1"));
+        c.addTimeSlot(new TimeSlot(DayOfWeek.TUESDAY, LocalTime.of(8, 0), LocalTime.of(9, 0), "R2"));
+        c.addTimeSlot(new TimeSlot(DayOfWeek.WEDNESDAY, LocalTime.of(8, 0), LocalTime.of(9, 0), "R3"));
+        t.addCourse(c);
+        s.addTerm(t);
+        store.save(s);
+        assertEquals(3, countRows("time_slots"));
+
+        c.getTimeSlots().remove(2);
+        store.save(s);
+
+        assertEquals(2, countRows("time_slots"));
+        Student loaded = store.loadStudent("stu-ot");
+        assertEquals(2, loaded.getTerms().get(0).getCourses().get(0).getTimeSlots().size());
+    }
+
+    @Test
+    void testOrphanTermDeletedOnSave() throws Exception {
+        Student s = new Student("Term", "stu-oterm");
+        WeightedGrading wg = new WeightedGrading(Map.of("Exams", 1.0));
+
+        Term t1 = new Term("T1", 2026, "S");
+        Course c1 = new Course("X", "X1", 3, wg);
+        c1.addAssessment(new Assessment("A1", "Exams", 80.0, 100.0, 1.0, LocalDate.of(2026, 1, 1)));
+        t1.addCourse(c1);
+
+        Term t2 = new Term("T2", 2026, "S");
+        Course c2 = new Course("Y", "Y1", 3, wg);
+        c2.addAssessment(new Assessment("A1", "Exams", 70.0, 100.0, 1.0, LocalDate.of(2026, 1, 1)));
+        t2.addCourse(c2);
+
+        s.addTerm(t1);
+        s.addTerm(t2);
+        store.save(s);
+        assertEquals(2, countRows("terms"));
+
+        s.removeTerm(t2);
+        store.save(s);
+
+        assertEquals(1, countRows("terms"));
+        Student loaded = store.loadStudent("stu-oterm");
+        assertEquals(1, loaded.getTerms().size());
+        assertEquals("T1", loaded.getTerms().get(0).getName());
+    }
+
+    @Test
+    void testIntegrityCheckPassesOnCleanDb() {
+        try (SqliteDataStore fresh = new SqliteDataStore(":memory:")) {
+            assertTrue(fresh.isConnected());
+        }
+    }
+
+    @Test
     void testExtremeGradesRoundTrip() {
         Student s = new Student("Edge", "stu-edge");
         Term t = new Term("EdgeTerm", 2026, "E");
