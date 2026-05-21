@@ -50,6 +50,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -500,27 +501,42 @@ public class App extends Application {
         ButtonType okType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
 
+        dialog.getDialogPane().setMinWidth(420);
+        dialog.getDialogPane().setPrefWidth(460);
+
         TextField nameField = new TextField();
         nameField.setPromptText("e.g. 1st Semester");
+        nameField.setMinWidth(250);
 
         int currentYear = Year.now().getValue();
         int initialYear = Math.min(2030, Math.max(2020, currentYear));
         Spinner<Integer> yearSpinner = new Spinner<>(2020, 2030, initialYear);
         yearSpinner.setEditable(true);
+        yearSpinner.setPrefWidth(250);
+        yearSpinner.setMinWidth(250);
         clampIntegerSpinner(yearSpinner, 2020, 2030);
 
         ComboBox<String> semesterCombo = new ComboBox<>();
         semesterCombo.getItems().addAll("First", "Second", "Summer");
         semesterCombo.getSelectionModel().selectFirst();
+        semesterCombo.setPrefWidth(250);
+        semesterCombo.setMinWidth(250);
 
         Label nameError = makeErrorLabel("Name is required");
         Label yearError = makeErrorLabel("Year must be between 2020 and 2030");
         Label semError = makeErrorLabel("Semester is required");
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16, 4, 16, 4));
+        grid.setPrefWidth(400);
+        ColumnConstraints termLabelCol = new ColumnConstraints();
+        termLabelCol.setMinWidth(80);
+        ColumnConstraints termInputCol = new ColumnConstraints();
+        termInputCol.setHgrow(Priority.ALWAYS);
+        termInputCol.setMinWidth(250);
+        grid.getColumnConstraints().addAll(termLabelCol, termInputCol);
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(nameError, 1, 1);
@@ -537,23 +553,25 @@ public class App extends Application {
         }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        okButton.getStyleClass().add(Styles.ACCENT);
+        final boolean[] touched = {false};
         Runnable validate = () -> {
             boolean nameOk = !nameField.getText().trim().isEmpty();
             Integer y = yearSpinner.getValue();
             boolean yearOk = y != null && y >= 2020 && y <= 2030;
             boolean semOk = semesterCombo.getValue() != null;
-            setFieldError(nameField, !nameOk);
-            setFieldError(yearSpinner, !yearOk);
-            setFieldError(semesterCombo, !semOk);
-            showError(nameError, !nameOk);
-            showError(yearError, !yearOk);
-            showError(semError, !semOk);
+            setFieldError(nameField, !nameOk && touched[0]);
+            setFieldError(yearSpinner, !yearOk && touched[0]);
+            setFieldError(semesterCombo, !semOk && touched[0]);
+            showError(nameError, !nameOk && touched[0]);
+            showError(yearError, !yearOk && touched[0]);
+            showError(semError, !semOk && touched[0]);
             okButton.setDisable(!(nameOk && yearOk && semOk));
         };
-        nameField.textProperty().addListener((o, ov, nv) -> validate.run());
-        yearSpinner.valueProperty().addListener((o, ov, nv) -> validate.run());
-        yearSpinner.getEditor().textProperty().addListener((o, ov, nv) -> validate.run());
-        semesterCombo.valueProperty().addListener((o, ov, nv) -> validate.run());
+        nameField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        yearSpinner.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        yearSpinner.getEditor().textProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        semesterCombo.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
         validate.run();
 
         dialog.setResultConverter(bt -> {
@@ -576,18 +594,27 @@ public class App extends Application {
         ButtonType okType = new ButtonType(editing ? "Save" : "Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
 
+        dialog.getDialogPane().setMinWidth(420);
+        dialog.getDialogPane().setPrefWidth(460);
+
         TextField nameField = new TextField(editing ? existing.getName() : "");
         nameField.setPromptText("e.g. Data Structures");
+        nameField.setMinWidth(250);
         TextField codeField = new TextField(editing ? existing.getCode() : "");
         codeField.setPromptText("e.g. CS201");
+        codeField.setMinWidth(250);
         Spinner<Integer> unitsSpinner = new Spinner<>(1, 6, editing ? existing.getUnits() : 3);
         unitsSpinner.setEditable(true);
+        unitsSpinner.setMinWidth(250);
         clampIntegerSpinner(unitsSpinner, 1, 6);
 
         if (editing) {
             nameField.setDisable(true);
             codeField.setDisable(true);
             unitsSpinner.setDisable(true);
+            nameField.setOpacity(0.6);
+            codeField.setOpacity(0.6);
+            unitsSpinner.setOpacity(0.6);
         }
 
         Label nameError = makeErrorLabel("Name is required");
@@ -596,16 +623,25 @@ public class App extends Application {
 
         ComboBox<String> policyTypeCombo = new ComboBox<>();
         policyTypeCombo.getItems().addAll("Weighted", "Points-Based", "Curved");
+        policyTypeCombo.setMinWidth(250);
 
         VBox configArea = new VBox(8);
         configArea.getStyleClass().add("policy-config-area");
+        configArea.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 12;");
 
         PolicyEditor topEditor = new PolicyEditor(policyTypeCombo, configArea, existing == null ? null : existing.getGradingPolicy(), false);
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16, 4, 16, 4));
+        grid.setPrefWidth(400);
+        ColumnConstraints courseLabelCol = new ColumnConstraints();
+        courseLabelCol.setMinWidth(80);
+        ColumnConstraints courseInputCol = new ColumnConstraints();
+        courseInputCol.setHgrow(Priority.ALWAYS);
+        courseInputCol.setMinWidth(250);
+        grid.getColumnConstraints().addAll(courseLabelCol, courseInputCol);
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(nameError, 1, 1);
@@ -625,25 +661,27 @@ public class App extends Application {
         }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        okButton.getStyleClass().add(Styles.ACCENT);
+        final boolean[] touched = {false};
         Runnable updateOk = () -> {
             boolean nameOk = editing || !nameField.getText().trim().isEmpty();
             boolean codeOk = editing || !codeField.getText().trim().isEmpty();
             Integer u = unitsSpinner.getValue();
             boolean unitsOk = editing || (u != null && u >= 1 && u <= 6);
             if (!editing) {
-                setFieldError(nameField, !nameOk);
-                setFieldError(codeField, !codeOk);
-                setFieldError(unitsSpinner, !unitsOk);
-                showError(nameError, !nameOk);
-                showError(codeError, !codeOk);
-                showError(unitsError, !unitsOk);
+                setFieldError(nameField, !nameOk && touched[0]);
+                setFieldError(codeField, !codeOk && touched[0]);
+                setFieldError(unitsSpinner, !unitsOk && touched[0]);
+                showError(nameError, !nameOk && touched[0]);
+                showError(codeError, !codeOk && touched[0]);
+                showError(unitsError, !unitsOk && touched[0]);
             }
             okButton.setDisable(!(nameOk && codeOk && unitsOk && topEditor.isValid()));
         };
-        nameField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        codeField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        unitsSpinner.valueProperty().addListener((o, ov, nv) -> updateOk.run());
-        unitsSpinner.getEditor().textProperty().addListener((o, ov, nv) -> updateOk.run());
+        nameField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        codeField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        unitsSpinner.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        unitsSpinner.getEditor().textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
         topEditor.setOnValidityChanged(updateOk);
         updateOk.run();
 
@@ -1128,9 +1166,12 @@ public class App extends Application {
 
         ButtonType okType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
+        dialog.getDialogPane().setMinWidth(420);
+        dialog.getDialogPane().setPrefWidth(460);
 
         TextField titleField = new TextField();
         titleField.setPromptText("e.g. Midterm Exam");
+        titleField.setMinWidth(250);
 
         LinkedHashSet<String> categorySuggestions = new LinkedHashSet<>();
         for (Assessment a : course.getAssessments()) {
@@ -1141,11 +1182,17 @@ public class App extends Application {
         ComboBox<String> categoryCombo = new ComboBox<>(FXCollections.observableArrayList(categorySuggestions));
         categoryCombo.setEditable(true);
         categoryCombo.setPromptText("Category");
+        categoryCombo.setMinWidth(250);
 
-        TextField scoreField = new TextField("-1");
+        TextField scoreField = new TextField();
+        scoreField.setPromptText("-1 for ungraded");
+        scoreField.setMinWidth(250);
         TextField maxScoreField = new TextField("100");
+        maxScoreField.setMinWidth(250);
         TextField weightField = new TextField("1.0");
+        weightField.setMinWidth(250);
         DatePicker datePicker = new DatePicker(LocalDate.now());
+        datePicker.setMinWidth(250);
 
         Label titleError = makeErrorLabel("Title is required");
         Label categoryError = makeErrorLabel("Category is required");
@@ -1156,9 +1203,16 @@ public class App extends Application {
         Label dateError = makeErrorLabel("Date is required");
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16, 4, 16, 4));
+        grid.setPrefWidth(400);
+        ColumnConstraints asmtLabelCol = new ColumnConstraints();
+        asmtLabelCol.setMinWidth(80);
+        ColumnConstraints asmtInputCol = new ColumnConstraints();
+        asmtInputCol.setHgrow(Priority.ALWAYS);
+        asmtInputCol.setMinWidth(250);
+        grid.getColumnConstraints().addAll(asmtLabelCol, asmtInputCol);
         grid.add(new Label("Title:"), 0, 0);
         grid.add(titleField, 1, 0);
         grid.add(titleError, 1, 1);
@@ -1185,11 +1239,15 @@ public class App extends Application {
         }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        okButton.getStyleClass().add(Styles.ACCENT);
+        final boolean[] touched = {false};
         Runnable updateOk = () -> {
             boolean titleOk = !titleField.getText().trim().isEmpty();
             String catText = categoryCombo.getEditor().getText();
             boolean catOk = catText != null && !catText.trim().isEmpty();
-            Double scoreVal = parseDoubleOrNull(scoreField.getText());
+            String scoreText = scoreField.getText() == null ? "" : scoreField.getText().trim();
+            boolean scoreEmpty = scoreText.isEmpty();
+            Double scoreVal = scoreEmpty ? Double.valueOf(-1) : parseDoubleOrNull(scoreText);
             boolean scoreOk = scoreVal != null && scoreVal >= -1;
             Double maxVal = parsePositiveDoubleOrNull(maxScoreField.getText());
             boolean maxOk = maxVal != null;
@@ -1198,37 +1256,38 @@ public class App extends Application {
             boolean dateOk = datePicker.getValue() != null;
             boolean scoreExceeds = scoreOk && maxOk && scoreVal > maxVal;
 
-            setFieldError(titleField, !titleOk);
-            setFieldError(categoryCombo, !catOk);
-            setFieldError(scoreField, !scoreOk || scoreExceeds);
-            setFieldError(maxScoreField, !maxOk);
-            setFieldError(weightField, !weightOk);
-            setFieldError(datePicker, !dateOk);
+            setFieldError(titleField, !titleOk && touched[0]);
+            setFieldError(categoryCombo, !catOk && touched[0]);
+            setFieldError(scoreField, (!scoreOk || scoreExceeds) && touched[0]);
+            setFieldError(maxScoreField, !maxOk && touched[0]);
+            setFieldError(weightField, !weightOk && touched[0]);
+            setFieldError(datePicker, !dateOk && touched[0]);
 
-            showError(titleError, !titleOk);
-            showError(categoryError, !catOk);
-            showError(scoreError, !scoreOk);
-            showError(scoreWarn, scoreExceeds);
-            showError(maxError, !maxOk);
-            showError(weightError, !weightOk);
-            showError(dateError, !dateOk);
+            showError(titleError, !titleOk && touched[0]);
+            showError(categoryError, !catOk && touched[0]);
+            showError(scoreError, !scoreOk && touched[0]);
+            showError(scoreWarn, scoreExceeds && touched[0]);
+            showError(maxError, !maxOk && touched[0]);
+            showError(weightError, !weightOk && touched[0]);
+            showError(dateError, !dateOk && touched[0]);
 
             okButton.setDisable(!(titleOk && catOk && scoreOk && maxOk && weightOk && dateOk));
         };
-        titleField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        categoryCombo.getEditor().textProperty().addListener((o, ov, nv) -> updateOk.run());
-        scoreField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        maxScoreField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        weightField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        datePicker.valueProperty().addListener((o, ov, nv) -> updateOk.run());
+        titleField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        categoryCombo.getEditor().textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        scoreField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        maxScoreField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        weightField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        datePicker.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
         updateOk.run();
 
         dialog.setResultConverter(bt -> {
             if (bt != okType) return null;
+            double score = scoreField.getText().trim().isEmpty() ? -1 : Double.parseDouble(scoreField.getText().trim());
             return new Assessment(
                     titleField.getText().trim(),
                     categoryCombo.getEditor().getText().trim(),
-                    Double.parseDouble(scoreField.getText().trim()),
+                    score,
                     Double.parseDouble(maxScoreField.getText().trim()),
                     Double.parseDouble(weightField.getText().trim()),
                     datePicker.getValue());
@@ -1967,36 +2026,40 @@ public class App extends Application {
 
         ButtonType okType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
+        dialog.getDialogPane().setMinWidth(420);
+        dialog.getDialogPane().setPrefWidth(460);
 
         ComboBox<DayOfWeek> dayCombo = new ComboBox<>(FXCollections.observableArrayList(
                 DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                 DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY));
         dayCombo.getSelectionModel().select(DayOfWeek.MONDAY);
+        dayCombo.setMinWidth(250);
 
         Spinner<Integer> startHour = new Spinner<>(7, 21, 8);
         startHour.setEditable(true);
-        startHour.setPrefWidth(80);
+        startHour.setPrefWidth(90);
         clampIntegerSpinner(startHour, 7, 21);
         Spinner<Integer> startMin = new Spinner<>();
         startMin.setValueFactory(new SpinnerValueFactory.ListSpinnerValueFactory<>(
                 FXCollections.observableArrayList(0, 15, 30, 45)));
         startMin.getValueFactory().setValue(30);
         startMin.setEditable(true);
-        startMin.setPrefWidth(80);
+        startMin.setPrefWidth(90);
 
         Spinner<Integer> endHour = new Spinner<>(7, 21, 10);
         endHour.setEditable(true);
-        endHour.setPrefWidth(80);
+        endHour.setPrefWidth(90);
         clampIntegerSpinner(endHour, 7, 21);
         Spinner<Integer> endMin = new Spinner<>();
         endMin.setValueFactory(new SpinnerValueFactory.ListSpinnerValueFactory<>(
                 FXCollections.observableArrayList(0, 15, 30, 45)));
         endMin.getValueFactory().setValue(0);
         endMin.setEditable(true);
-        endMin.setPrefWidth(80);
+        endMin.setPrefWidth(90);
 
         TextField roomField = new TextField();
         roomField.setPromptText("e.g. CL-301");
+        roomField.setMinWidth(250);
 
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("timeslot-error");
@@ -2012,15 +2075,22 @@ public class App extends Application {
         endBox.setAlignment(Pos.CENTER_LEFT);
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16, 4, 16, 4));
+        grid.setPrefWidth(400);
+        ColumnConstraints tsLabelCol = new ColumnConstraints();
+        tsLabelCol.setMinWidth(80);
+        ColumnConstraints tsInputCol = new ColumnConstraints();
+        tsInputCol.setHgrow(Priority.ALWAYS);
+        tsInputCol.setMinWidth(250);
+        grid.getColumnConstraints().addAll(tsLabelCol, tsInputCol);
         grid.add(new Label("Day:"), 0, 0);
         grid.add(dayCombo, 1, 0);
         grid.add(dayError, 1, 1);
-        grid.add(new Label("Start:"), 0, 2);
+        grid.add(new Label("Start Time:"), 0, 2);
         grid.add(startBox, 1, 2);
-        grid.add(new Label("End:"), 0, 3);
+        grid.add(new Label("End Time:"), 0, 3);
         grid.add(endBox, 1, 3);
         grid.add(errorLabel, 0, 4, 2, 1);
         grid.add(new Label("Room:"), 0, 5);
@@ -2033,14 +2103,16 @@ public class App extends Application {
         }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        okButton.getStyleClass().add(Styles.ACCENT);
 
+        final boolean[] touched = {false};
         Runnable validate = () -> {
             boolean dayOk = dayCombo.getValue() != null;
             boolean roomOk = !roomField.getText().trim().isEmpty();
             LocalTime start = LocalTime.of(startHour.getValue(), startMin.getValue());
             LocalTime end = LocalTime.of(endHour.getValue(), endMin.getValue());
             boolean timeOk = end.isAfter(start);
-            if (!timeOk) {
+            if (!timeOk && touched[0]) {
                 errorLabel.setText("End time must be after start time");
                 errorLabel.setVisible(true);
                 errorLabel.setManaged(true);
@@ -2052,18 +2124,18 @@ public class App extends Application {
                 setFieldError(endHour, false);
                 setFieldError(endMin, false);
             }
-            setFieldError(dayCombo, !dayOk);
-            setFieldError(roomField, !roomOk);
-            showError(dayError, !dayOk);
-            showError(roomError, !roomOk);
+            setFieldError(dayCombo, !dayOk && touched[0]);
+            setFieldError(roomField, !roomOk && touched[0]);
+            showError(dayError, !dayOk && touched[0]);
+            showError(roomError, !roomOk && touched[0]);
             okButton.setDisable(!(dayOk && roomOk && timeOk));
         };
-        dayCombo.valueProperty().addListener((o, ov, nv) -> validate.run());
-        roomField.textProperty().addListener((o, ov, nv) -> validate.run());
-        startHour.valueProperty().addListener((o, ov, nv) -> validate.run());
-        startMin.valueProperty().addListener((o, ov, nv) -> validate.run());
-        endHour.valueProperty().addListener((o, ov, nv) -> validate.run());
-        endMin.valueProperty().addListener((o, ov, nv) -> validate.run());
+        dayCombo.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        roomField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        startHour.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        startMin.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        endHour.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        endMin.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
         validate.run();
 
         dialog.setResultConverter(bt -> {
