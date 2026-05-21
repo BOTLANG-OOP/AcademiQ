@@ -24,6 +24,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -61,6 +62,16 @@ public class SqliteDataStore implements AutoCloseable {
             }
 
             createTables();
+
+            try (Statement stmt = connection.createStatement();
+                 ResultSet rs = stmt.executeQuery("PRAGMA integrity_check")) {
+                if (rs.next()) {
+                    String result = rs.getString(1);
+                    if (!"ok".equalsIgnoreCase(result)) {
+                        System.err.println("WARNING: SQLite integrity_check returned: " + result);
+                    }
+                }
+            }
 
             Runtime.getRuntime().addShutdownHook(new Thread(this::close, "sqlite-shutdown-flush"));
 
@@ -266,7 +277,7 @@ public class SqliteDataStore implements AutoCloseable {
         }
     }
 
-    public void save(Student student) {
+    public synchronized void save(Student student) {
         if (connection == null) {
             throw new IllegalStateException("Save error: no database connection.");
         }
@@ -283,31 +294,49 @@ public class SqliteDataStore implements AutoCloseable {
 
             insertStudent(student);
 
+            List<String> writtenTermIds = new ArrayList<>();
+            List<String> writtenCourseIds = new ArrayList<>();
+            List<String> writtenAssessmentIds = new ArrayList<>();
+            List<String> writtenTimeSlotIds = new ArrayList<>();
+
             List<Term> terms = student.getTerms();
             for (int ti = 0; ti < terms.size(); ti++) {
                 Term term = terms.get(ti);
                 String termId = deterministicId(student.getId(), ti);
+                writtenTermIds.add(termId);
                 insertTerm(student.getId(), term, termId);
 
                 List<Course> courses = term.getCourses();
                 for (int ci = 0; ci < courses.size(); ci++) {
                     Course course = courses.get(ci);
                     String courseId = deterministicId(termId, ci);
+                    writtenCourseIds.add(courseId);
                     insertCourse(termId, course, courseId);
 
                     List<Assessment> assessments = course.getAssessments();
                     for (int ai = 0; ai < assessments.size(); ai++) {
                         String assessmentId = deterministicId(courseId + ":a", ai);
+                        writtenAssessmentIds.add(assessmentId);
                         insertAssessment(courseId, assessments.get(ai), assessmentId);
                     }
 
                     List<TimeSlot> slots = course.getTimeSlots();
                     for (int si = 0; si < slots.size(); si++) {
                         String slotId = deterministicId(courseId + ":t", si);
+                        writtenTimeSlotIds.add(slotId);
                         insertTimeSlot(courseId, slots.get(si), slotId);
                     }
                 }
             }
+
+            deleteOrphans("terms", "student_id", "term_id",
+                    List.of(student.getId()), writtenTermIds);
+            deleteOrphans("courses", "term_id", "course_id",
+                    writtenTermIds, writtenCourseIds);
+            deleteOrphans("assessments", "course_id", "assessment_id",
+                    writtenCourseIds, writtenAssessmentIds);
+            deleteOrphans("time_slots", "course_id", "time_slot_id",
+                    writtenCourseIds, writtenTimeSlotIds);
 
             connection.commit();
         } catch (SQLException | RuntimeException e) {
@@ -341,6 +370,26 @@ public class SqliteDataStore implements AutoCloseable {
             save(s);
         } catch (RuntimeException e) {
             System.err.println("Debounced save failed: " + e.getMessage());
+        }
+    }
+
+    private void deleteOrphans(String table, String parentCol, String idCol,
+                               List<String> parentIds, List<String> keepIds) throws SQLException {
+        if (parentIds.isEmpty()) return;
+        String parents = String.join(",", Collections.nCopies(parentIds.size(), "?"));
+        String sql;
+        if (keepIds.isEmpty()) {
+            sql = "DELETE FROM " + table + " WHERE " + parentCol + " IN (" + parents + ")";
+        } else {
+            String keep = String.join(",", Collections.nCopies(keepIds.size(), "?"));
+            sql = "DELETE FROM " + table + " WHERE " + parentCol + " IN (" + parents
+                    + ") AND " + idCol + " NOT IN (" + keep + ")";
+        }
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            int idx = 1;
+            for (String p : parentIds) ps.setString(idx++, p);
+            for (String k : keepIds) ps.setString(idx++, k);
+            ps.executeUpdate();
         }
     }
 
