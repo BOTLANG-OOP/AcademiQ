@@ -95,7 +95,6 @@ public class App extends Application {
     private Button scheduleButton;
     private Button activeButton;
 
-    private Button sidebarToggleButton;
     private boolean sidebarExpanded = true;
     private static final double SIDEBAR_EXPANDED_WIDTH = 220;
     private static final double SIDEBAR_COLLAPSED_WIDTH = 56;
@@ -170,20 +169,17 @@ public class App extends Application {
         VBox box = new VBox();
         box.getStyleClass().addAll("sidebar", "sidebar-expanded");
 
+        Button toggleButton = new Button();
+        FontIcon menuIcon = new FontIcon(Feather.MENU);
+        menuIcon.setIconSize(18);
+        toggleButton.setGraphic(menuIcon);
+        toggleButton.getStyleClass().add("toggle-sidebar-button");
+        toggleButton.setMaxWidth(Double.MAX_VALUE);
+        toggleButton.setFocusTraversable(false);
+        toggleButton.setOnAction(e -> toggleSidebar());
+
         Label title = new Label("AcademiQ");
         title.getStyleClass().add("app-title");
-
-        sidebarToggleButton = new Button("☰");
-        sidebarToggleButton.getStyleClass().add("sidebar-inline-toggle");
-        sidebarToggleButton.setFocusTraversable(false);
-        sidebarToggleButton.setOnAction(e -> toggleSidebar());
-
-        Region titleSpacer = new Region();
-        HBox.setHgrow(titleSpacer, Priority.ALWAYS);
-
-        HBox titleRow = new HBox(title, titleSpacer, sidebarToggleButton);
-        titleRow.setAlignment(Pos.CENTER_LEFT);
-        titleRow.getStyleClass().add("sidebar-title-row");
 
         Label studentName = new Label(student.getName());
         studentName.getStyleClass().add("sidebar-student-name");
@@ -193,10 +189,10 @@ public class App extends Application {
 
         Separator separator = new Separator();
 
-        coursesButton = createNavButton("📚", "Courses", "courses");
-        gradesButton = createNavButton("📝", "Grade Entry", "grades");
-        dashboardButton = createNavButton("📊", "Dashboard", "dashboard");
-        scheduleButton = createNavButton("📅", "Schedule", "schedule");
+        coursesButton = createNavButton(Feather.BOOK_OPEN, "Courses", "courses");
+        gradesButton = createNavButton(Feather.EDIT_3, "Grade Entry", "grades");
+        dashboardButton = createNavButton(Feather.BAR_CHART_2, "Dashboard", "dashboard");
+        scheduleButton = createNavButton(Feather.CALENDAR, "Schedule", "schedule");
 
         VBox navButtons = new VBox(4, coursesButton, gradesButton, dashboardButton, scheduleButton);
         navButtons.setPadding(new Insets(0, 6, 0, 6));
@@ -207,7 +203,7 @@ public class App extends Application {
         Label version = new Label("v1.0");
         version.getStyleClass().add("version-label");
 
-        box.getChildren().addAll(titleRow, studentName, studentId, separator,
+        box.getChildren().addAll(toggleButton, title, studentName, studentId, separator,
                 navButtons, spacer, version);
         box.setPrefWidth(SIDEBAR_EXPANDED_WIDTH);
         box.setMinWidth(SIDEBAR_EXPANDED_WIDTH);
@@ -215,8 +211,12 @@ public class App extends Application {
         return box;
     }
 
-    private Button createNavButton(String emoji, String label, String viewName) {
-        Button button = new Button(emoji + "  " + label);
+    private Button createNavButton(Feather icon, String label, String viewName) {
+        Button button = new Button(label);
+        FontIcon fontIcon = new FontIcon(icon);
+        fontIcon.setIconSize(18);
+        button.setGraphic(fontIcon);
+        button.setGraphicTextGap(10);
         button.getStyleClass().add("nav-button");
         button.setMaxWidth(Double.MAX_VALUE);
         button.setUserData(label);
@@ -239,36 +239,29 @@ public class App extends Application {
         timeline.play();
 
         for (Node child : sidebar.getChildren()) {
-            if (child.getStyleClass().contains("sidebar-title-row") && child instanceof HBox row) {
-                row.setAlignment(sidebarExpanded ? Pos.CENTER_LEFT : Pos.CENTER);
-                for (Node sub : row.getChildren()) {
-                    if (sub.getStyleClass().contains("app-title")) {
-                        sub.setVisible(sidebarExpanded);
-                        sub.setManaged(sidebarExpanded);
-                    }
-                }
+            if (child.getStyleClass().contains("app-title")) {
+                ((Label) child).setText(sidebarExpanded ? "AcademiQ" : "AQ");
             }
             if (child.getStyleClass().contains("sidebar-student-name")
                 || child.getStyleClass().contains("sidebar-student-id")
-                || child.getStyleClass().contains("version-label")) {
+                || child.getStyleClass().contains("version-label")
+                || child instanceof Separator) {
                 child.setVisible(sidebarExpanded);
                 child.setManaged(sidebarExpanded);
             }
         }
 
-
         for (Node btn : new Node[]{coursesButton, gradesButton, dashboardButton, scheduleButton}) {
             if (btn instanceof Button b) {
                 String label = (String) b.getUserData();
-                String currentText = b.getText();
-                int spaceIdx = currentText.indexOf(" ");
-                String emoji = spaceIdx > 0 ? currentText.substring(0, spaceIdx).trim() : currentText.trim();
                 if (sidebarExpanded) {
-                    b.setText(emoji + "  " + label);
-                    b.setAlignment(Pos.CENTER_LEFT);
+                    b.setText(label);
+                    b.setContentDisplay(javafx.scene.control.ContentDisplay.LEFT);
+                    b.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
                 } else {
-                    b.setText(emoji);
-                    b.setAlignment(Pos.CENTER);
+                    b.setText("");
+                    b.setContentDisplay(javafx.scene.control.ContentDisplay.GRAPHIC_ONLY);
+                    b.setAlignment(javafx.geometry.Pos.CENTER);
                 }
             }
         }
@@ -308,6 +301,7 @@ public class App extends Application {
             }
             activeButton = next;
         }
+
     }
 
     private VBox createCourseListPane() {

@@ -45,7 +45,7 @@
 }
 .nav-button {
     -fx-background-color: transparent;
-    -fx-text-fill: rgba(255,255,255,0.65);
+    -fx-text-fill: rgba(255,255,255,0.85);
     -fx-font-size: 13px;
     -fx-font-weight: 500;
     -fx-padding: 10 16;
@@ -55,31 +55,39 @@
     -fx-border-width: 0;
     -fx-max-width: infinity;
 }
+.nav-button .ikonli-font-icon {
+    -fx-icon-color: rgba(255,255,255,0.85);
+}
 .nav-button:hover {
     -fx-background-color: rgba(255,255,255,0.08);
     -fx-text-fill: white;
+}
+.nav-button:hover .ikonli-font-icon {
+    -fx-icon-color: white;
 }
 .nav-button.nav-active {
     -fx-background-color: rgba(137, 52, 59, 0.85);
     -fx-text-fill: white;
     -fx-font-weight: 700;
 }
-.sidebar-inline-toggle {
-    -fx-background-color: transparent;
-    -fx-text-fill: rgba(255,255,255,0.6);
-    -fx-font-size: 16px;
-    -fx-font-weight: 700;
-    -fx-min-width: 24;
-    -fx-min-height: 24;
-    -fx-max-width: 24;
-    -fx-max-height: 24;
-    -fx-padding: 0;
-    -fx-background-radius: 4;
-    -fx-cursor: hand;
+.nav-button.nav-active .ikonli-font-icon {
+    -fx-icon-color: white;
 }
-.sidebar-inline-toggle:hover {
-    -fx-background-color: rgba(255,255,255,0.1);
-    -fx-text-fill: white;
+.toggle-sidebar-button {
+    -fx-background-color: transparent;
+    -fx-padding: 12 16;
+    -fx-background-radius: 0;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+}
+.toggle-sidebar-button .ikonli-font-icon {
+    -fx-icon-color: rgba(255,255,255,0.75);
+}
+.toggle-sidebar-button:hover {
+    -fx-background-color: rgba(255,255,255,0.08);
+}
+.toggle-sidebar-button:hover .ikonli-font-icon {
+    -fx-icon-color: white;
 }
 
 /* ---------- Content area ---------- */
@@ -360,6 +368,12 @@
     -fx-text-fill: -color-danger-fg;
     -fx-font-weight: 600;
 }
+
+/* ---------- Layout helpers ---------- */
+.term-controls { -fx-padding: 4 0; }
+.courses-body { -fx-alignment: TOP_LEFT; }
+.course-button-bar { -fx-padding: 4 0 0 0; }
+.policy-config-area { -fx-padding: 8 0 0 0; }
 
 /* ---------- Empty states ---------- */
 .empty-state-icon { -fx-icon-color: -color-fg-muted; }
