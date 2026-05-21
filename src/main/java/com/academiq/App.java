@@ -150,7 +150,6 @@ public class App extends Application {
         alert.setContentText("The database may be corrupted. Would you like to start fresh?\n"
                 + "(This will delete all saved data.)");
         alert.getButtonTypes().setAll(startFresh, quit);
-        alert.getDialogPane().getStyleClass().add("aq-dialog");
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == startFresh) {
@@ -533,7 +532,9 @@ public class App extends Application {
         grid.add(semError, 1, 5);
 
         dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+        if (contentArea.getScene() != null) {
+            dialog.initOwner(contentArea.getScene().getWindow());
+        }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
         Runnable validate = () -> {
@@ -619,7 +620,9 @@ public class App extends Application {
         grid.add(configArea, 0, 7, 2, 1);
 
         dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+        if (contentArea.getScene() != null) {
+            dialog.initOwner(contentArea.getScene().getWindow());
+        }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
         Runnable updateOk = () -> {
@@ -1177,7 +1180,9 @@ public class App extends Application {
         grid.add(dateError, 1, 12);
 
         dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+        if (contentArea.getScene() != null) {
+            dialog.initOwner(contentArea.getScene().getWindow());
+        }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
         Runnable updateOk = () -> {
@@ -2023,7 +2028,9 @@ public class App extends Application {
         grid.add(roomError, 1, 6);
 
         dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+        if (contentArea.getScene() != null) {
+            dialog.initOwner(contentArea.getScene().getWindow());
+        }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
 
