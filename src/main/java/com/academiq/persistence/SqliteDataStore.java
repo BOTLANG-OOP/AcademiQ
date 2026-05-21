@@ -13,6 +13,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -38,6 +39,7 @@ public class SqliteDataStore implements AutoCloseable {
 
     private static final String DB_FILE = "academiq.db";
     private Connection connection;
+    private String connectionErrorMessage;
 
     private final ScheduledExecutorService debounceExecutorService =
             Executors.newSingleThreadScheduledExecutor(r -> {
@@ -55,7 +57,12 @@ public class SqliteDataStore implements AutoCloseable {
     public SqliteDataStore(String dbPath) {
         try {
             connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+        } catch (SQLException e) {
+            connectionErrorMessage = "Database connection error: " + e.getMessage();
+            return;
+        }
 
+        try {
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute("PRAGMA foreign_keys = ON;");
                 stmt.execute("PRAGMA journal_mode = WAL;");
@@ -75,8 +82,42 @@ public class SqliteDataStore implements AutoCloseable {
 
             Runtime.getRuntime().addShutdownHook(new Thread(this::close, "sqlite-shutdown-flush"));
 
+        } catch (SQLException | RuntimeException e) {
+            connectionErrorMessage = "Database initialization error: " + e.getMessage();
+        }
+    }
+
+    public boolean hasConnectionError() {
+        return connectionErrorMessage != null;
+    }
+
+    public String getConnectionErrorMessage() {
+        return connectionErrorMessage;
+    }
+
+    public boolean isDatabaseHealthy() {
+        if (connection == null) return false;
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("PRAGMA integrity_check")) {
+            if (rs.next()) {
+                return "ok".equalsIgnoreCase(rs.getString(1));
+            }
+            return false;
         } catch (SQLException e) {
-            throw new RuntimeException("Database connection error: " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    public static void deleteDatabase(String dbPath) {
+        deleteIfExists(dbPath);
+        deleteIfExists(dbPath + "-shm");
+        deleteIfExists(dbPath + "-wal");
+    }
+
+    private static void deleteIfExists(String path) {
+        File f = new File(path);
+        if (f.exists()) {
+            f.delete();
         }
     }
 
