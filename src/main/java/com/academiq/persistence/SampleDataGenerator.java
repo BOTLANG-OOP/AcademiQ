@@ -27,7 +27,7 @@ public class SampleDataGenerator {
             return;
         }
 
-        Student student = new Student("Juan Dela Cruz", "2024-0001");
+        Student student = new Student("Student", "default-student");
 
         student.addTerm(buildTerm1());
         student.addTerm(buildTerm2());
@@ -37,7 +37,7 @@ public class SampleDataGenerator {
         }
 
         System.out.println("Sample database created: academiq-demo.db");
-        System.out.println("Student: Juan Dela Cruz (2024-0001)");
+        System.out.println("Student: Student (default-student)");
         System.out.println("Term 1: 1st Semester 2025 — 3 courses, all fully graded");
         System.out.println("Term 2: 2nd Semester 2026 — 3 courses, some ungraded (projection demo)");
         System.out.println("Schedule conflict: IT302 vs IT303 on Friday 08:00-09:30");
