@@ -12,6 +12,8 @@ import com.academiq.model.Term;
 import com.academiq.model.TimeSlot;
 import com.academiq.persistence.SqliteDataStore;
 
+import atlantafx.base.theme.PrimerLight;
+import atlantafx.base.theme.Styles;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -48,6 +50,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -57,6 +60,12 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.feather.Feather;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -86,8 +95,13 @@ public class App extends Application {
     private Button scheduleButton;
     private Button activeButton;
 
+    private boolean sidebarExpanded = true;
+    private static final double SIDEBAR_EXPANDED_WIDTH = 220;
+    private static final double SIDEBAR_COLLAPSED_WIDTH = 56;
+
     @Override
     public void start(Stage stage) {
+        Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
         store = new SqliteDataStore();
         if (store.hasConnectionError() || !store.isDatabaseHealthy()) {
             if (!handleCorruptedDatabase()) {
@@ -139,7 +153,6 @@ public class App extends Application {
         alert.setContentText("The database may be corrupted. Would you like to start fresh?\n"
                 + "(This will delete all saved data.)");
         alert.getButtonTypes().setAll(startFresh, quit);
-        alert.getDialogPane().getStyleClass().add("aq-dialog");
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == startFresh) {
@@ -154,36 +167,107 @@ public class App extends Application {
 
     private VBox createSidebar() {
         VBox box = new VBox();
-        box.getStyleClass().add("sidebar");
+        box.getStyleClass().addAll("sidebar", "sidebar-expanded");
+
+        Button toggleButton = new Button();
+        FontIcon menuIcon = new FontIcon(Feather.MENU);
+        menuIcon.setIconSize(18);
+        toggleButton.setGraphic(menuIcon);
+        toggleButton.getStyleClass().add("toggle-sidebar-button");
+        toggleButton.setMaxWidth(Double.MAX_VALUE);
+        toggleButton.setFocusTraversable(false);
+        toggleButton.setOnAction(e -> toggleSidebar());
 
         Label title = new Label("AcademiQ");
         title.getStyleClass().add("app-title");
 
+        Label studentName = new Label(student.getName());
+        studentName.getStyleClass().add("sidebar-student-name");
+
+        Label studentId = new Label(student.getId());
+        studentId.getStyleClass().add("sidebar-student-id");
+
         Separator separator = new Separator();
 
-        coursesButton = createNavButton("📚  Courses", "courses");
-        gradesButton = createNavButton("📝  Grade Entry", "grades");
-        dashboardButton = createNavButton("📊  Dashboard", "dashboard");
-        scheduleButton = createNavButton("📅  Schedule", "schedule");
+        coursesButton = createNavButton(Feather.BOOK_OPEN, "Courses", "courses");
+        gradesButton = createNavButton(Feather.EDIT_3, "Grade Entry", "grades");
+        dashboardButton = createNavButton(Feather.BAR_CHART_2, "Dashboard", "dashboard");
+        scheduleButton = createNavButton(Feather.CALENDAR, "Schedule", "schedule");
 
-        VBox navButtons = new VBox(coursesButton, gradesButton, dashboardButton, scheduleButton);
+        VBox navButtons = new VBox(4, coursesButton, gradesButton, dashboardButton, scheduleButton);
+        navButtons.setPadding(new Insets(0, 6, 0, 6));
 
         Region spacer = new Region();
-        VBox.setVgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        Label version = new Label("v1.0-SNAPSHOT");
+        Label version = new Label("v1.0");
         version.getStyleClass().add("version-label");
 
-        box.getChildren().addAll(title, separator, navButtons, spacer, version);
+        box.getChildren().addAll(toggleButton, title, studentName, studentId, separator,
+                navButtons, spacer, version);
+        box.setPrefWidth(SIDEBAR_EXPANDED_WIDTH);
+        box.setMinWidth(SIDEBAR_EXPANDED_WIDTH);
+        box.setMaxWidth(SIDEBAR_EXPANDED_WIDTH);
         return box;
     }
 
-    private Button createNavButton(String text, String viewName) {
-        Button button = new Button(text);
+    private Button createNavButton(Feather icon, String label, String viewName) {
+        Button button = new Button(label);
+        FontIcon fontIcon = new FontIcon(icon);
+        fontIcon.setIconSize(18);
+        button.setGraphic(fontIcon);
+        button.setGraphicTextGap(10);
         button.getStyleClass().add("nav-button");
         button.setMaxWidth(Double.MAX_VALUE);
+        button.setUserData(label);
         button.setOnAction(e -> navigateTo(viewName));
         return button;
+    }
+
+    private void toggleSidebar() {
+        sidebarExpanded = !sidebarExpanded;
+        double targetWidth = sidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH;
+
+        Timeline timeline = new Timeline(
+            new KeyFrame(
+                javafx.util.Duration.millis(200),
+                new KeyValue(sidebar.prefWidthProperty(), targetWidth),
+                new KeyValue(sidebar.minWidthProperty(), targetWidth),
+                new KeyValue(sidebar.maxWidthProperty(), targetWidth)
+            )
+        );
+        timeline.play();
+
+        for (Node child : sidebar.getChildren()) {
+            if (child.getStyleClass().contains("app-title")) {
+                ((Label) child).setText(sidebarExpanded ? "AcademiQ" : "AQ");
+            }
+            if (child.getStyleClass().contains("sidebar-student-name")
+                || child.getStyleClass().contains("sidebar-student-id")
+                || child.getStyleClass().contains("version-label")
+                || child instanceof Separator) {
+                child.setVisible(sidebarExpanded);
+                child.setManaged(sidebarExpanded);
+            }
+        }
+
+        for (Node btn : new Node[]{coursesButton, gradesButton, dashboardButton, scheduleButton}) {
+            if (btn instanceof Button b) {
+                String label = (String) b.getUserData();
+                if (sidebarExpanded) {
+                    b.setText(label);
+                    b.setContentDisplay(javafx.scene.control.ContentDisplay.LEFT);
+                    b.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                } else {
+                    b.setText("");
+                    b.setContentDisplay(javafx.scene.control.ContentDisplay.GRAPHIC_ONLY);
+                    b.setAlignment(javafx.geometry.Pos.CENTER);
+                }
+            }
+        }
+
+        sidebar.getStyleClass().removeAll("sidebar-expanded", "sidebar-collapsed");
+        sidebar.getStyleClass().add(sidebarExpanded ? "sidebar-expanded" : "sidebar-collapsed");
     }
 
     private void navigateTo(String viewName) {
@@ -217,6 +301,7 @@ public class App extends Application {
             }
             activeButton = next;
         }
+
     }
 
     private VBox createCourseListPane() {
@@ -243,7 +328,7 @@ public class App extends Application {
         }
 
         Button addTermButton = new Button("Add Term");
-        addTermButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addTermButton.getStyleClass().addAll(Styles.ACCENT);
         addTermButton.setOnAction(e -> {
             Optional<Term> created = showAddTermDialog();
             created.ifPresent(t -> {
@@ -254,7 +339,7 @@ public class App extends Application {
         });
 
         Button removeTermButton = new Button("Remove Term");
-        removeTermButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeTermButton.getStyleClass().addAll(Styles.DANGER);
         removeTermButton.disableProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
         removeTermButton.setOnAction(e -> {
             Term selected = termCombo.getSelectionModel().getSelectedItem();
@@ -280,15 +365,14 @@ public class App extends Application {
         StackPane body = new StackPane();
         body.getStyleClass().add("courses-body");
 
-        Label emptyPrompt = new Label("Add a term to get started");
-        emptyPrompt.getStyleClass().add("empty-prompt");
+        Node emptyPrompt = createEmptyState(Feather.BOOK_OPEN, "No Terms Yet", "Create a term to start tracking your courses");
 
-        Label noTermSelected = new Label("Select a term to view courses");
-        noTermSelected.getStyleClass().add("empty-prompt");
+        Node noTermSelected = createEmptyState(Feather.CHEVRON_UP, "Select a Term", "Choose a term from the dropdown above");
 
         TableView<Course> courseTable = new TableView<>();
-        courseTable.getStyleClass().add("course-table");
-        courseTable.setPlaceholder(new Label("No courses yet. Click 'Add Course' to begin"));
+        courseTable.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
+        courseTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        courseTable.setPlaceholder(createEmptyState(Feather.FOLDER, "No Courses", "Click 'Add Course' to begin"));
 
         TableColumn<Course, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getName()));
@@ -331,7 +415,7 @@ public class App extends Application {
         rebindTable.run();
 
         Button addCourseButton = new Button("Add Course");
-        addCourseButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addCourseButton.getStyleClass().addAll(Styles.ACCENT);
         addCourseButton.disableProperty().bind(termCombo.getSelectionModel().selectedItemProperty().isNull());
         addCourseButton.setOnAction(e -> {
             Term term = termCombo.getSelectionModel().getSelectedItem();
@@ -344,7 +428,7 @@ public class App extends Application {
         });
 
         Button editCourseButton = new Button("Edit Course");
-        editCourseButton.getStyleClass().addAll("aq-button", "aq-button-secondary");
+        editCourseButton.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
         editCourseButton.disableProperty().bind(courseTable.getSelectionModel().selectedItemProperty().isNull());
         editCourseButton.setOnAction(e -> {
             Course selected = courseTable.getSelectionModel().getSelectedItem();
@@ -353,7 +437,7 @@ public class App extends Application {
         });
 
         Button removeCourseButton = new Button("Remove Course");
-        removeCourseButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeCourseButton.getStyleClass().addAll(Styles.DANGER);
         removeCourseButton.disableProperty().bind(courseTable.getSelectionModel().selectedItemProperty().isNull());
         removeCourseButton.setOnAction(e -> {
             Course selected = courseTable.getSelectionModel().getSelectedItem();
@@ -412,27 +496,42 @@ public class App extends Application {
         ButtonType okType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
 
+        dialog.getDialogPane().setMinWidth(420);
+        dialog.getDialogPane().setPrefWidth(460);
+
         TextField nameField = new TextField();
         nameField.setPromptText("e.g. 1st Semester");
+        nameField.setMinWidth(250);
 
         int currentYear = Year.now().getValue();
         int initialYear = Math.min(2030, Math.max(2020, currentYear));
         Spinner<Integer> yearSpinner = new Spinner<>(2020, 2030, initialYear);
         yearSpinner.setEditable(true);
+        yearSpinner.setPrefWidth(250);
+        yearSpinner.setMinWidth(250);
         clampIntegerSpinner(yearSpinner, 2020, 2030);
 
         ComboBox<String> semesterCombo = new ComboBox<>();
         semesterCombo.getItems().addAll("First", "Second", "Summer");
         semesterCombo.getSelectionModel().selectFirst();
+        semesterCombo.setPrefWidth(250);
+        semesterCombo.setMinWidth(250);
 
         Label nameError = makeErrorLabel("Name is required");
         Label yearError = makeErrorLabel("Year must be between 2020 and 2030");
         Label semError = makeErrorLabel("Semester is required");
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16, 4, 16, 4));
+        grid.setPrefWidth(400);
+        ColumnConstraints termLabelCol = new ColumnConstraints();
+        termLabelCol.setMinWidth(80);
+        ColumnConstraints termInputCol = new ColumnConstraints();
+        termInputCol.setHgrow(Priority.ALWAYS);
+        termInputCol.setMinWidth(250);
+        grid.getColumnConstraints().addAll(termLabelCol, termInputCol);
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(nameError, 1, 1);
@@ -444,26 +543,30 @@ public class App extends Application {
         grid.add(semError, 1, 5);
 
         dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+        if (contentArea.getScene() != null) {
+            dialog.initOwner(contentArea.getScene().getWindow());
+        }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        okButton.getStyleClass().add(Styles.ACCENT);
+        final boolean[] touched = {false};
         Runnable validate = () -> {
             boolean nameOk = !nameField.getText().trim().isEmpty();
             Integer y = yearSpinner.getValue();
             boolean yearOk = y != null && y >= 2020 && y <= 2030;
             boolean semOk = semesterCombo.getValue() != null;
-            setFieldError(nameField, !nameOk);
-            setFieldError(yearSpinner, !yearOk);
-            setFieldError(semesterCombo, !semOk);
-            showError(nameError, !nameOk);
-            showError(yearError, !yearOk);
-            showError(semError, !semOk);
+            setFieldError(nameField, !nameOk && touched[0]);
+            setFieldError(yearSpinner, !yearOk && touched[0]);
+            setFieldError(semesterCombo, !semOk && touched[0]);
+            showError(nameError, !nameOk && touched[0]);
+            showError(yearError, !yearOk && touched[0]);
+            showError(semError, !semOk && touched[0]);
             okButton.setDisable(!(nameOk && yearOk && semOk));
         };
-        nameField.textProperty().addListener((o, ov, nv) -> validate.run());
-        yearSpinner.valueProperty().addListener((o, ov, nv) -> validate.run());
-        yearSpinner.getEditor().textProperty().addListener((o, ov, nv) -> validate.run());
-        semesterCombo.valueProperty().addListener((o, ov, nv) -> validate.run());
+        nameField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        yearSpinner.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        yearSpinner.getEditor().textProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        semesterCombo.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
         validate.run();
 
         dialog.setResultConverter(bt -> {
@@ -486,18 +589,27 @@ public class App extends Application {
         ButtonType okType = new ButtonType(editing ? "Save" : "Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
 
+        dialog.getDialogPane().setMinWidth(420);
+        dialog.getDialogPane().setPrefWidth(460);
+
         TextField nameField = new TextField(editing ? existing.getName() : "");
         nameField.setPromptText("e.g. Data Structures");
+        nameField.setMinWidth(250);
         TextField codeField = new TextField(editing ? existing.getCode() : "");
         codeField.setPromptText("e.g. CS201");
+        codeField.setMinWidth(250);
         Spinner<Integer> unitsSpinner = new Spinner<>(1, 6, editing ? existing.getUnits() : 3);
         unitsSpinner.setEditable(true);
+        unitsSpinner.setMinWidth(250);
         clampIntegerSpinner(unitsSpinner, 1, 6);
 
         if (editing) {
             nameField.setDisable(true);
             codeField.setDisable(true);
             unitsSpinner.setDisable(true);
+            nameField.setOpacity(0.6);
+            codeField.setOpacity(0.6);
+            unitsSpinner.setOpacity(0.6);
         }
 
         Label nameError = makeErrorLabel("Name is required");
@@ -506,16 +618,25 @@ public class App extends Application {
 
         ComboBox<String> policyTypeCombo = new ComboBox<>();
         policyTypeCombo.getItems().addAll("Weighted", "Points-Based", "Curved");
+        policyTypeCombo.setMinWidth(250);
 
         VBox configArea = new VBox(8);
         configArea.getStyleClass().add("policy-config-area");
+        configArea.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-padding: 12;");
 
         PolicyEditor topEditor = new PolicyEditor(policyTypeCombo, configArea, existing == null ? null : existing.getGradingPolicy(), false);
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16, 4, 16, 4));
+        grid.setPrefWidth(400);
+        ColumnConstraints courseLabelCol = new ColumnConstraints();
+        courseLabelCol.setMinWidth(80);
+        ColumnConstraints courseInputCol = new ColumnConstraints();
+        courseInputCol.setHgrow(Priority.ALWAYS);
+        courseInputCol.setMinWidth(250);
+        grid.getColumnConstraints().addAll(courseLabelCol, courseInputCol);
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(nameError, 1, 1);
@@ -530,28 +651,32 @@ public class App extends Application {
         grid.add(configArea, 0, 7, 2, 1);
 
         dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+        if (contentArea.getScene() != null) {
+            dialog.initOwner(contentArea.getScene().getWindow());
+        }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        okButton.getStyleClass().add(Styles.ACCENT);
+        final boolean[] touched = {false};
         Runnable updateOk = () -> {
             boolean nameOk = editing || !nameField.getText().trim().isEmpty();
             boolean codeOk = editing || !codeField.getText().trim().isEmpty();
             Integer u = unitsSpinner.getValue();
             boolean unitsOk = editing || (u != null && u >= 1 && u <= 6);
             if (!editing) {
-                setFieldError(nameField, !nameOk);
-                setFieldError(codeField, !codeOk);
-                setFieldError(unitsSpinner, !unitsOk);
-                showError(nameError, !nameOk);
-                showError(codeError, !codeOk);
-                showError(unitsError, !unitsOk);
+                setFieldError(nameField, !nameOk && touched[0]);
+                setFieldError(codeField, !codeOk && touched[0]);
+                setFieldError(unitsSpinner, !unitsOk && touched[0]);
+                showError(nameError, !nameOk && touched[0]);
+                showError(codeError, !codeOk && touched[0]);
+                showError(unitsError, !unitsOk && touched[0]);
             }
             okButton.setDisable(!(nameOk && codeOk && unitsOk && topEditor.isValid()));
         };
-        nameField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        codeField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        unitsSpinner.valueProperty().addListener((o, ov, nv) -> updateOk.run());
-        unitsSpinner.getEditor().textProperty().addListener((o, ov, nv) -> updateOk.run());
+        nameField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        codeField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        unitsSpinner.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        unitsSpinner.getEditor().textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
         topEditor.setOnValidityChanged(updateOk);
         updateOk.run();
 
@@ -634,7 +759,7 @@ public class App extends Application {
             addWeightedRow("Homework", "0.4");
 
             Button addRow = new Button("Add Category");
-            addRow.getStyleClass().addAll("aq-button", "aq-button-secondary");
+            addRow.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
             addRow.setOnAction(e -> addWeightedRow("", ""));
 
             recomputeWeightedTotal();
@@ -648,7 +773,7 @@ public class App extends Application {
             weightF.setPromptText("0.5");
             weightF.setPrefWidth(80);
             Button remove = new Button("Remove");
-            remove.getStyleClass().addAll("aq-button", "aq-button-secondary");
+            remove.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
             HBox row = new HBox(8, nameF, weightF, remove);
             row.setAlignment(Pos.CENTER_LEFT);
             remove.setOnAction(e -> {
@@ -850,9 +975,10 @@ public class App extends Application {
         selectors.getStyleClass().add("term-controls");
 
         TableView<Assessment> table = new TableView<>();
-        table.getStyleClass().add("course-table");
+        table.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setEditable(true);
-        table.setPlaceholder(new Label("No assessments yet. Click 'Add Assessment' to begin"));
+        table.setPlaceholder(createEmptyState(Feather.EDIT_3, "No Assessments", "Click 'Add Assessment' to begin"));
 
         TableColumn<Assessment, String> titleCol = new TableColumn<>("Title");
         titleCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getTitle()));
@@ -918,7 +1044,7 @@ public class App extends Application {
         rebindTable.run();
 
         Button addButton = new Button("Add Assessment");
-        addButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addButton.getStyleClass().addAll(Styles.ACCENT);
         addButton.disableProperty().bind(courseCombo.getSelectionModel().selectedItemProperty().isNull());
         addButton.setOnAction(e -> {
             Course course = courseCombo.getSelectionModel().getSelectedItem();
@@ -931,7 +1057,7 @@ public class App extends Application {
         });
 
         Button removeButton = new Button("Remove Assessment");
-        removeButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeButton.getStyleClass().addAll(Styles.DANGER);
         removeButton.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
         removeButton.setOnAction(e -> {
             Course course = courseCombo.getSelectionModel().getSelectedItem();
@@ -954,8 +1080,7 @@ public class App extends Application {
         VBox tableSection = new VBox(12, tableAndBreakdown, buttonBar);
         VBox.setVgrow(tableAndBreakdown, Priority.ALWAYS);
 
-        Label noCourseSelected = new Label("Select a course to enter grades");
-        noCourseSelected.getStyleClass().add("empty-prompt");
+        Node noCourseSelected = createEmptyState(Feather.BAR_CHART_2, "Select a Course", "Pick a term and course to enter grades");
 
         StackPane body = new StackPane(noCourseSelected, tableSection);
         body.getStyleClass().add("courses-body");
@@ -969,6 +1094,24 @@ public class App extends Application {
         pane.setPadding(new Insets(16));
         VBox.setVgrow(body, Priority.ALWAYS);
         return pane;
+    }
+
+    private static VBox createEmptyState(Feather icon, String title, String subtitle) {
+        FontIcon fontIcon = new FontIcon(icon);
+        fontIcon.setIconSize(40);
+        fontIcon.setIconColor(javafx.scene.paint.Color.web("#828282"));
+        fontIcon.getStyleClass().add("empty-state-icon");
+
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("empty-state-title");
+        Label subtitleLabel = new Label(subtitle);
+        subtitleLabel.getStyleClass().add("empty-state-subtitle");
+        subtitleLabel.setWrapText(true);
+
+        VBox box = new VBox(8, fontIcon, titleLabel, subtitleLabel);
+        box.setAlignment(javafx.geometry.Pos.CENTER);
+        box.setPadding(new javafx.geometry.Insets(40, 20, 40, 20));
+        return box;
     }
 
     private static Label makeErrorLabel(String text) {
@@ -1035,9 +1178,12 @@ public class App extends Application {
 
         ButtonType okType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
+        dialog.getDialogPane().setMinWidth(420);
+        dialog.getDialogPane().setPrefWidth(460);
 
         TextField titleField = new TextField();
         titleField.setPromptText("e.g. Midterm Exam");
+        titleField.setMinWidth(250);
 
         LinkedHashSet<String> categorySuggestions = new LinkedHashSet<>();
         for (Assessment a : course.getAssessments()) {
@@ -1048,11 +1194,17 @@ public class App extends Application {
         ComboBox<String> categoryCombo = new ComboBox<>(FXCollections.observableArrayList(categorySuggestions));
         categoryCombo.setEditable(true);
         categoryCombo.setPromptText("Category");
+        categoryCombo.setMinWidth(250);
 
-        TextField scoreField = new TextField("-1");
+        TextField scoreField = new TextField();
+        scoreField.setPromptText("-1 for ungraded");
+        scoreField.setMinWidth(250);
         TextField maxScoreField = new TextField("100");
+        maxScoreField.setMinWidth(250);
         TextField weightField = new TextField("1.0");
+        weightField.setMinWidth(250);
         DatePicker datePicker = new DatePicker(LocalDate.now());
+        datePicker.setMinWidth(250);
 
         Label titleError = makeErrorLabel("Title is required");
         Label categoryError = makeErrorLabel("Category is required");
@@ -1063,9 +1215,16 @@ public class App extends Application {
         Label dateError = makeErrorLabel("Date is required");
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16, 4, 16, 4));
+        grid.setPrefWidth(400);
+        ColumnConstraints asmtLabelCol = new ColumnConstraints();
+        asmtLabelCol.setMinWidth(80);
+        ColumnConstraints asmtInputCol = new ColumnConstraints();
+        asmtInputCol.setHgrow(Priority.ALWAYS);
+        asmtInputCol.setMinWidth(250);
+        grid.getColumnConstraints().addAll(asmtLabelCol, asmtInputCol);
         grid.add(new Label("Title:"), 0, 0);
         grid.add(titleField, 1, 0);
         grid.add(titleError, 1, 1);
@@ -1087,14 +1246,20 @@ public class App extends Application {
         grid.add(dateError, 1, 12);
 
         dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+        if (contentArea.getScene() != null) {
+            dialog.initOwner(contentArea.getScene().getWindow());
+        }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        okButton.getStyleClass().add(Styles.ACCENT);
+        final boolean[] touched = {false};
         Runnable updateOk = () -> {
             boolean titleOk = !titleField.getText().trim().isEmpty();
             String catText = categoryCombo.getEditor().getText();
             boolean catOk = catText != null && !catText.trim().isEmpty();
-            Double scoreVal = parseDoubleOrNull(scoreField.getText());
+            String scoreText = scoreField.getText() == null ? "" : scoreField.getText().trim();
+            boolean scoreEmpty = scoreText.isEmpty();
+            Double scoreVal = scoreEmpty ? Double.valueOf(-1) : parseDoubleOrNull(scoreText);
             boolean scoreOk = scoreVal != null && scoreVal >= -1;
             Double maxVal = parsePositiveDoubleOrNull(maxScoreField.getText());
             boolean maxOk = maxVal != null;
@@ -1103,37 +1268,38 @@ public class App extends Application {
             boolean dateOk = datePicker.getValue() != null;
             boolean scoreExceeds = scoreOk && maxOk && scoreVal > maxVal;
 
-            setFieldError(titleField, !titleOk);
-            setFieldError(categoryCombo, !catOk);
-            setFieldError(scoreField, !scoreOk || scoreExceeds);
-            setFieldError(maxScoreField, !maxOk);
-            setFieldError(weightField, !weightOk);
-            setFieldError(datePicker, !dateOk);
+            setFieldError(titleField, !titleOk && touched[0]);
+            setFieldError(categoryCombo, !catOk && touched[0]);
+            setFieldError(scoreField, (!scoreOk || scoreExceeds) && touched[0]);
+            setFieldError(maxScoreField, !maxOk && touched[0]);
+            setFieldError(weightField, !weightOk && touched[0]);
+            setFieldError(datePicker, !dateOk && touched[0]);
 
-            showError(titleError, !titleOk);
-            showError(categoryError, !catOk);
-            showError(scoreError, !scoreOk);
-            showError(scoreWarn, scoreExceeds);
-            showError(maxError, !maxOk);
-            showError(weightError, !weightOk);
-            showError(dateError, !dateOk);
+            showError(titleError, !titleOk && touched[0]);
+            showError(categoryError, !catOk && touched[0]);
+            showError(scoreError, !scoreOk && touched[0]);
+            showError(scoreWarn, scoreExceeds && touched[0]);
+            showError(maxError, !maxOk && touched[0]);
+            showError(weightError, !weightOk && touched[0]);
+            showError(dateError, !dateOk && touched[0]);
 
             okButton.setDisable(!(titleOk && catOk && scoreOk && maxOk && weightOk && dateOk));
         };
-        titleField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        categoryCombo.getEditor().textProperty().addListener((o, ov, nv) -> updateOk.run());
-        scoreField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        maxScoreField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        weightField.textProperty().addListener((o, ov, nv) -> updateOk.run());
-        datePicker.valueProperty().addListener((o, ov, nv) -> updateOk.run());
+        titleField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        categoryCombo.getEditor().textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        scoreField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        maxScoreField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        weightField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
+        datePicker.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; updateOk.run(); });
         updateOk.run();
 
         dialog.setResultConverter(bt -> {
             if (bt != okType) return null;
+            double score = scoreField.getText().trim().isEmpty() ? -1 : Double.parseDouble(scoreField.getText().trim());
             return new Assessment(
                     titleField.getText().trim(),
                     categoryCombo.getEditor().getText().trim(),
-                    Double.parseDouble(scoreField.getText().trim()),
+                    score,
                     Double.parseDouble(maxScoreField.getText().trim()),
                     Double.parseDouble(weightField.getText().trim()),
                     datePicker.getValue());
@@ -1462,14 +1628,13 @@ public class App extends Application {
         applyCumulativeColor.run();
 
         VBox cumulativeCard = new VBox(8, cumulativeCaption, cumulativeValue, cumulativeBar);
-        cumulativeCard.getStyleClass().add("dashboard-cumulative-card");
+        cumulativeCard.getStyleClass().addAll("dashboard-card", "dashboard-cumulative-card");
 
         // --- Section 2: Per-term breakdown ---
         Label termsHeader = new Label("Terms");
         termsHeader.getStyleClass().add("dashboard-subheader");
 
-        Label noTermsLabel = new Label("No terms yet. Add a term in Courses to see GPA breakdown.");
-        noTermsLabel.getStyleClass().add("empty-prompt");
+        Node noTermsLabel = createEmptyState(Feather.AWARD, "No Terms Yet", "Add a term in Courses to see your GPA");
         noTermsLabel.visibleProperty().bind(Bindings.isEmpty(student.getTerms()));
         noTermsLabel.managedProperty().bind(noTermsLabel.visibleProperty());
 
@@ -1495,8 +1660,11 @@ public class App extends Application {
         termScroll.setFitToWidth(true);
         termScroll.getStyleClass().add("dashboard-scroll");
         termScroll.setPrefHeight(280);
+        termScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        termScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         VBox termsSection = new VBox(8, termsHeader, noTermsLabel, termScroll);
+        termsSection.setMaxWidth(Double.MAX_VALUE);
 
         // --- Section 3: Course-level detail (visible when a term is selected) ---
         Label coursesHeader = new Label();
@@ -1509,13 +1677,14 @@ public class App extends Application {
         VBox courseCards = new VBox(8);
         courseCards.getStyleClass().add("dashboard-course-cards");
 
-        Label pickTermHint = new Label("Select a term above to view its courses");
-        pickTermHint.getStyleClass().add("empty-prompt");
+        Node pickTermHint = createEmptyState(Feather.LAYERS, "Select a Term", "Click a term card to see its courses");
 
         ScrollPane courseScroll = new ScrollPane(courseCards);
         courseScroll.setFitToWidth(true);
         courseScroll.getStyleClass().add("dashboard-scroll");
         courseScroll.setPrefHeight(220);
+        courseScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        courseScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         final ListChangeListener<Course> coursesListener = c -> rebuildCourseCards(selectedTerm.get(), courseCards);
         final Term[] boundCoursesTerm = { null };
@@ -1536,13 +1705,27 @@ public class App extends Application {
         courseScroll.managedProperty().bind(courseScroll.visibleProperty());
 
         VBox coursesSection = new VBox(8, coursesHeader, pickTermHint, courseScroll);
+        coursesSection.setMaxWidth(Double.MAX_VALUE);
 
-        VBox pane = new VBox(16, header, cumulativeCard, termsSection, coursesSection);
+        HBox termAndCourses = new HBox(16, termsSection, coursesSection);
+        HBox.setHgrow(termsSection, Priority.ALWAYS);
+        HBox.setHgrow(coursesSection, Priority.ALWAYS);
+        termsSection.prefWidthProperty().bind(termAndCourses.widthProperty().multiply(0.55));
+        coursesSection.prefWidthProperty().bind(termAndCourses.widthProperty().multiply(0.45));
+
+        VBox pane = new VBox(16, header, cumulativeCard, termAndCourses);
         pane.setPadding(new Insets(16));
         pane.getStyleClass().add("dashboard-pane");
-        VBox.setVgrow(termsSection, Priority.SOMETIMES);
-        VBox.setVgrow(coursesSection, Priority.SOMETIMES);
-        return pane;
+        VBox.setVgrow(termAndCourses, Priority.ALWAYS);
+
+        ScrollPane dashboardScroll = new ScrollPane(pane);
+        dashboardScroll.setFitToWidth(true);
+        dashboardScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        dashboardScroll.getStyleClass().add("dashboard-scroll");
+
+        VBox outer = new VBox(dashboardScroll);
+        VBox.setVgrow(dashboardScroll, Priority.ALWAYS);
+        return outer;
     }
 
     private VBox createTermCard(Term term, ObjectProperty<Term> selectedTerm) {
@@ -1682,11 +1865,9 @@ public class App extends Application {
         selectors.setAlignment(Pos.CENTER_LEFT);
         selectors.getStyleClass().add("term-controls");
 
-        Label noTermSelected = new Label("Select a term to manage schedules");
-        noTermSelected.getStyleClass().add("empty-prompt");
+        Node noTermSelected = createEmptyState(Feather.CALENDAR, "Select a Term", "Choose a term to manage schedules");
 
-        Label noCoursesLabel = new Label("No courses in this term");
-        noCoursesLabel.getStyleClass().add("empty-prompt");
+        Node noCoursesLabel = createEmptyState(Feather.FOLDER, "No Courses", "Add courses in the Courses tab first");
 
         VBox courseSections = new VBox(18);
         courseSections.getStyleClass().add("schedule-sections");
@@ -1815,8 +1996,9 @@ public class App extends Application {
         title.getStyleClass().add("schedule-course-title");
 
         TableView<TimeSlot> table = new TableView<>(course.getTimeSlots());
-        table.getStyleClass().add("course-table");
-        table.setPlaceholder(new Label("No time slots yet"));
+        table.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.setPlaceholder(createEmptyState(Feather.CLOCK, "No Time Slots", "Click 'Add Time Slot' to begin"));
         table.setPrefHeight(180);
 
         TableColumn<TimeSlot, String> dayCol = new TableColumn<>("Day");
@@ -1839,7 +2021,7 @@ public class App extends Application {
         table.getColumns().addAll(dayCol, startCol, endCol, roomCol);
 
         Button addButton = new Button("Add Time Slot");
-        addButton.getStyleClass().addAll("aq-button", "aq-button-primary");
+        addButton.getStyleClass().addAll(Styles.ACCENT);
         addButton.setOnAction(e -> showTimeSlotDialog().ifPresent(ts -> {
             course.addTimeSlot(ts);
             table.getSelectionModel().select(ts);
@@ -1847,7 +2029,7 @@ public class App extends Application {
         }));
 
         Button removeButton = new Button("Remove");
-        removeButton.getStyleClass().addAll("aq-button", "aq-button-danger");
+        removeButton.getStyleClass().addAll(Styles.DANGER);
         removeButton.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
         removeButton.setOnAction(e -> {
             TimeSlot sel = table.getSelectionModel().getSelectedItem();
@@ -1871,36 +2053,40 @@ public class App extends Application {
 
         ButtonType okType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(okType, ButtonType.CANCEL);
+        dialog.getDialogPane().setMinWidth(420);
+        dialog.getDialogPane().setPrefWidth(460);
 
         ComboBox<DayOfWeek> dayCombo = new ComboBox<>(FXCollections.observableArrayList(
                 DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                 DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY));
         dayCombo.getSelectionModel().select(DayOfWeek.MONDAY);
+        dayCombo.setMinWidth(250);
 
         Spinner<Integer> startHour = new Spinner<>(7, 21, 8);
         startHour.setEditable(true);
-        startHour.setPrefWidth(80);
+        startHour.setPrefWidth(90);
         clampIntegerSpinner(startHour, 7, 21);
         Spinner<Integer> startMin = new Spinner<>();
         startMin.setValueFactory(new SpinnerValueFactory.ListSpinnerValueFactory<>(
                 FXCollections.observableArrayList(0, 15, 30, 45)));
         startMin.getValueFactory().setValue(30);
         startMin.setEditable(true);
-        startMin.setPrefWidth(80);
+        startMin.setPrefWidth(90);
 
         Spinner<Integer> endHour = new Spinner<>(7, 21, 10);
         endHour.setEditable(true);
-        endHour.setPrefWidth(80);
+        endHour.setPrefWidth(90);
         clampIntegerSpinner(endHour, 7, 21);
         Spinner<Integer> endMin = new Spinner<>();
         endMin.setValueFactory(new SpinnerValueFactory.ListSpinnerValueFactory<>(
                 FXCollections.observableArrayList(0, 15, 30, 45)));
         endMin.getValueFactory().setValue(0);
         endMin.setEditable(true);
-        endMin.setPrefWidth(80);
+        endMin.setPrefWidth(90);
 
         TextField roomField = new TextField();
         roomField.setPromptText("e.g. CL-301");
+        roomField.setMinWidth(250);
 
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("timeslot-error");
@@ -1916,15 +2102,22 @@ public class App extends Application {
         endBox.setAlignment(Pos.CENTER_LEFT);
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(8, 0, 8, 0));
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16, 4, 16, 4));
+        grid.setPrefWidth(400);
+        ColumnConstraints tsLabelCol = new ColumnConstraints();
+        tsLabelCol.setMinWidth(80);
+        ColumnConstraints tsInputCol = new ColumnConstraints();
+        tsInputCol.setHgrow(Priority.ALWAYS);
+        tsInputCol.setMinWidth(250);
+        grid.getColumnConstraints().addAll(tsLabelCol, tsInputCol);
         grid.add(new Label("Day:"), 0, 0);
         grid.add(dayCombo, 1, 0);
         grid.add(dayError, 1, 1);
-        grid.add(new Label("Start:"), 0, 2);
+        grid.add(new Label("Start Time:"), 0, 2);
         grid.add(startBox, 1, 2);
-        grid.add(new Label("End:"), 0, 3);
+        grid.add(new Label("End Time:"), 0, 3);
         grid.add(endBox, 1, 3);
         grid.add(errorLabel, 0, 4, 2, 1);
         grid.add(new Label("Room:"), 0, 5);
@@ -1932,17 +2125,21 @@ public class App extends Application {
         grid.add(roomError, 1, 6);
 
         dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getStyleClass().add("aq-dialog");
+        if (contentArea.getScene() != null) {
+            dialog.initOwner(contentArea.getScene().getWindow());
+        }
 
         Button okButton = (Button) dialog.getDialogPane().lookupButton(okType);
+        okButton.getStyleClass().add(Styles.ACCENT);
 
+        final boolean[] touched = {false};
         Runnable validate = () -> {
             boolean dayOk = dayCombo.getValue() != null;
             boolean roomOk = !roomField.getText().trim().isEmpty();
             LocalTime start = LocalTime.of(startHour.getValue(), startMin.getValue());
             LocalTime end = LocalTime.of(endHour.getValue(), endMin.getValue());
             boolean timeOk = end.isAfter(start);
-            if (!timeOk) {
+            if (!timeOk && touched[0]) {
                 errorLabel.setText("End time must be after start time");
                 errorLabel.setVisible(true);
                 errorLabel.setManaged(true);
@@ -1954,18 +2151,18 @@ public class App extends Application {
                 setFieldError(endHour, false);
                 setFieldError(endMin, false);
             }
-            setFieldError(dayCombo, !dayOk);
-            setFieldError(roomField, !roomOk);
-            showError(dayError, !dayOk);
-            showError(roomError, !roomOk);
+            setFieldError(dayCombo, !dayOk && touched[0]);
+            setFieldError(roomField, !roomOk && touched[0]);
+            showError(dayError, !dayOk && touched[0]);
+            showError(roomError, !roomOk && touched[0]);
             okButton.setDisable(!(dayOk && roomOk && timeOk));
         };
-        dayCombo.valueProperty().addListener((o, ov, nv) -> validate.run());
-        roomField.textProperty().addListener((o, ov, nv) -> validate.run());
-        startHour.valueProperty().addListener((o, ov, nv) -> validate.run());
-        startMin.valueProperty().addListener((o, ov, nv) -> validate.run());
-        endHour.valueProperty().addListener((o, ov, nv) -> validate.run());
-        endMin.valueProperty().addListener((o, ov, nv) -> validate.run());
+        dayCombo.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        roomField.textProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        startHour.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        startMin.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        endHour.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
+        endMin.valueProperty().addListener((o, ov, nv) -> { touched[0] = true; validate.run(); });
         validate.run();
 
         dialog.setResultConverter(bt -> {
