@@ -1634,7 +1634,7 @@ public class App extends Application {
         applyCumulativeColor.run();
 
         VBox cumulativeCard = new VBox(8, cumulativeCaption, cumulativeValue, cumulativeBar);
-        cumulativeCard.getStyleClass().add("dashboard-cumulative-card");
+        cumulativeCard.getStyleClass().addAll("dashboard-card", "dashboard-cumulative-card");
 
         // --- Section 2: Per-term breakdown ---
         Label termsHeader = new Label("Terms");
@@ -1666,8 +1666,11 @@ public class App extends Application {
         termScroll.setFitToWidth(true);
         termScroll.getStyleClass().add("dashboard-scroll");
         termScroll.setPrefHeight(280);
+        termScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        termScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         VBox termsSection = new VBox(8, termsHeader, noTermsLabel, termScroll);
+        termsSection.setMaxWidth(Double.MAX_VALUE);
 
         // --- Section 3: Course-level detail (visible when a term is selected) ---
         Label coursesHeader = new Label();
@@ -1686,6 +1689,8 @@ public class App extends Application {
         courseScroll.setFitToWidth(true);
         courseScroll.getStyleClass().add("dashboard-scroll");
         courseScroll.setPrefHeight(220);
+        courseScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        courseScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         final ListChangeListener<Course> coursesListener = c -> rebuildCourseCards(selectedTerm.get(), courseCards);
         final Term[] boundCoursesTerm = { null };
@@ -1706,13 +1711,27 @@ public class App extends Application {
         courseScroll.managedProperty().bind(courseScroll.visibleProperty());
 
         VBox coursesSection = new VBox(8, coursesHeader, pickTermHint, courseScroll);
+        coursesSection.setMaxWidth(Double.MAX_VALUE);
 
-        VBox pane = new VBox(16, header, cumulativeCard, termsSection, coursesSection);
+        HBox termAndCourses = new HBox(16, termsSection, coursesSection);
+        HBox.setHgrow(termsSection, Priority.ALWAYS);
+        HBox.setHgrow(coursesSection, Priority.ALWAYS);
+        termsSection.prefWidthProperty().bind(termAndCourses.widthProperty().multiply(0.55));
+        coursesSection.prefWidthProperty().bind(termAndCourses.widthProperty().multiply(0.45));
+
+        VBox pane = new VBox(16, header, cumulativeCard, termAndCourses);
         pane.setPadding(new Insets(16));
         pane.getStyleClass().add("dashboard-pane");
-        VBox.setVgrow(termsSection, Priority.SOMETIMES);
-        VBox.setVgrow(coursesSection, Priority.SOMETIMES);
-        return pane;
+        VBox.setVgrow(termAndCourses, Priority.ALWAYS);
+
+        ScrollPane dashboardScroll = new ScrollPane(pane);
+        dashboardScroll.setFitToWidth(true);
+        dashboardScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        dashboardScroll.getStyleClass().add("dashboard-scroll");
+
+        VBox outer = new VBox(dashboardScroll);
+        VBox.setVgrow(dashboardScroll, Priority.ALWAYS);
+        return outer;
     }
 
     private VBox createTermCard(Term term, ObjectProperty<Term> selectedTerm) {
