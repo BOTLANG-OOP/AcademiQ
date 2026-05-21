@@ -12,6 +12,7 @@ import com.academiq.model.Term;
 import com.academiq.model.TimeSlot;
 import com.academiq.persistence.SqliteDataStore;
 
+import atlantafx.base.theme.PrimerLight;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -88,6 +89,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) {
+        Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
         store = new SqliteDataStore();
         if (store.hasConnectionError() || !store.isDatabaseHealthy()) {
             if (!handleCorruptedDatabase()) {
