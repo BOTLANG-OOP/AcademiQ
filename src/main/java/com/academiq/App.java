@@ -375,7 +375,8 @@ public class App extends Application {
         noTermSelected.getStyleClass().add("empty-prompt");
 
         TableView<Course> courseTable = new TableView<>();
-        courseTable.getStyleClass().add("course-table");
+        courseTable.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
+        courseTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         courseTable.setPlaceholder(new Label("No courses yet. Click 'Add Course' to begin"));
 
         TableColumn<Course, String> nameCol = new TableColumn<>("Name");
@@ -938,7 +939,8 @@ public class App extends Application {
         selectors.getStyleClass().add("term-controls");
 
         TableView<Assessment> table = new TableView<>();
-        table.getStyleClass().add("course-table");
+        table.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setEditable(true);
         table.setPlaceholder(new Label("No assessments yet. Click 'Add Assessment' to begin"));
 
@@ -1903,7 +1905,8 @@ public class App extends Application {
         title.getStyleClass().add("schedule-course-title");
 
         TableView<TimeSlot> table = new TableView<>(course.getTimeSlots());
-        table.getStyleClass().add("course-table");
+        table.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setPlaceholder(new Label("No time slots yet"));
         table.setPrefHeight(180);
 
