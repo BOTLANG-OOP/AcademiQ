@@ -58,6 +58,9 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -86,6 +89,11 @@ public class App extends Application {
     private Button dashboardButton;
     private Button scheduleButton;
     private Button activeButton;
+
+    private Button sidebarToggleButton;
+    private boolean sidebarExpanded = true;
+    private static final double SIDEBAR_EXPANDED_WIDTH = 220;
+    private static final double SIDEBAR_COLLAPSED_WIDTH = 56;
 
     @Override
     public void start(Stage stage) {
@@ -156,36 +164,113 @@ public class App extends Application {
 
     private VBox createSidebar() {
         VBox box = new VBox();
-        box.getStyleClass().add("sidebar");
+        box.getStyleClass().addAll("sidebar", "sidebar-expanded");
 
         Label title = new Label("AcademiQ");
         title.getStyleClass().add("app-title");
 
+        sidebarToggleButton = new Button("☰");
+        sidebarToggleButton.getStyleClass().add("sidebar-inline-toggle");
+        sidebarToggleButton.setFocusTraversable(false);
+        sidebarToggleButton.setOnAction(e -> toggleSidebar());
+
+        Region titleSpacer = new Region();
+        HBox.setHgrow(titleSpacer, Priority.ALWAYS);
+
+        HBox titleRow = new HBox(title, titleSpacer, sidebarToggleButton);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        titleRow.getStyleClass().add("sidebar-title-row");
+
+        Label studentName = new Label(student.getName());
+        studentName.getStyleClass().add("sidebar-student-name");
+
+        Label studentId = new Label(student.getId());
+        studentId.getStyleClass().add("sidebar-student-id");
+
         Separator separator = new Separator();
 
-        coursesButton = createNavButton("📚  Courses", "courses");
-        gradesButton = createNavButton("📝  Grade Entry", "grades");
-        dashboardButton = createNavButton("📊  Dashboard", "dashboard");
-        scheduleButton = createNavButton("📅  Schedule", "schedule");
+        coursesButton = createNavButton("📚", "Courses", "courses");
+        gradesButton = createNavButton("📝", "Grade Entry", "grades");
+        dashboardButton = createNavButton("📊", "Dashboard", "dashboard");
+        scheduleButton = createNavButton("📅", "Schedule", "schedule");
 
-        VBox navButtons = new VBox(coursesButton, gradesButton, dashboardButton, scheduleButton);
+        VBox navButtons = new VBox(4, coursesButton, gradesButton, dashboardButton, scheduleButton);
+        navButtons.setPadding(new Insets(0, 6, 0, 6));
 
         Region spacer = new Region();
-        VBox.setVgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        Label version = new Label("v1.0-SNAPSHOT");
+        Label version = new Label("v1.0");
         version.getStyleClass().add("version-label");
 
-        box.getChildren().addAll(title, separator, navButtons, spacer, version);
+        box.getChildren().addAll(titleRow, studentName, studentId, separator,
+                navButtons, spacer, version);
+        box.setPrefWidth(SIDEBAR_EXPANDED_WIDTH);
+        box.setMinWidth(SIDEBAR_EXPANDED_WIDTH);
+        box.setMaxWidth(SIDEBAR_EXPANDED_WIDTH);
         return box;
     }
 
-    private Button createNavButton(String text, String viewName) {
-        Button button = new Button(text);
+    private Button createNavButton(String emoji, String label, String viewName) {
+        Button button = new Button(emoji + "  " + label);
         button.getStyleClass().add("nav-button");
         button.setMaxWidth(Double.MAX_VALUE);
+        button.setUserData(label);
         button.setOnAction(e -> navigateTo(viewName));
         return button;
+    }
+
+    private void toggleSidebar() {
+        sidebarExpanded = !sidebarExpanded;
+        double targetWidth = sidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH;
+
+        Timeline timeline = new Timeline(
+            new KeyFrame(
+                javafx.util.Duration.millis(200),
+                new KeyValue(sidebar.prefWidthProperty(), targetWidth),
+                new KeyValue(sidebar.minWidthProperty(), targetWidth),
+                new KeyValue(sidebar.maxWidthProperty(), targetWidth)
+            )
+        );
+        timeline.play();
+
+        for (Node child : sidebar.getChildren()) {
+            if (child.getStyleClass().contains("sidebar-title-row") && child instanceof HBox row) {
+                row.setAlignment(sidebarExpanded ? Pos.CENTER_LEFT : Pos.CENTER);
+                for (Node sub : row.getChildren()) {
+                    if (sub.getStyleClass().contains("app-title")) {
+                        sub.setVisible(sidebarExpanded);
+                        sub.setManaged(sidebarExpanded);
+                    }
+                }
+            }
+            if (child.getStyleClass().contains("sidebar-student-name")
+                || child.getStyleClass().contains("sidebar-student-id")
+                || child.getStyleClass().contains("version-label")) {
+                child.setVisible(sidebarExpanded);
+                child.setManaged(sidebarExpanded);
+            }
+        }
+
+
+        for (Node btn : new Node[]{coursesButton, gradesButton, dashboardButton, scheduleButton}) {
+            if (btn instanceof Button b) {
+                String label = (String) b.getUserData();
+                String currentText = b.getText();
+                int spaceIdx = currentText.indexOf(" ");
+                String emoji = spaceIdx > 0 ? currentText.substring(0, spaceIdx).trim() : currentText.trim();
+                if (sidebarExpanded) {
+                    b.setText(emoji + "  " + label);
+                    b.setAlignment(Pos.CENTER_LEFT);
+                } else {
+                    b.setText(emoji);
+                    b.setAlignment(Pos.CENTER);
+                }
+            }
+        }
+
+        sidebar.getStyleClass().removeAll("sidebar-expanded", "sidebar-collapsed");
+        sidebar.getStyleClass().add(sidebarExpanded ? "sidebar-expanded" : "sidebar-collapsed");
     }
 
     private void navigateTo(String viewName) {

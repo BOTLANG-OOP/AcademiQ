@@ -64,18 +64,21 @@
     -fx-text-fill: white;
     -fx-font-weight: 700;
 }
-.toggle-sidebar-button {
+.sidebar-inline-toggle {
     -fx-background-color: transparent;
-    -fx-text-fill: rgba(255,255,255,0.5);
+    -fx-text-fill: rgba(255,255,255,0.6);
     -fx-font-size: 16px;
-    -fx-padding: 8 16;
+    -fx-font-weight: 700;
+    -fx-min-width: 24;
+    -fx-min-height: 24;
+    -fx-max-width: 24;
+    -fx-max-height: 24;
+    -fx-padding: 0;
+    -fx-background-radius: 4;
     -fx-cursor: hand;
-    -fx-alignment: CENTER;
-    -fx-background-radius: 6;
-    -fx-border-width: 0;
 }
-.toggle-sidebar-button:hover {
-    -fx-background-color: rgba(255,255,255,0.08);
+.sidebar-inline-toggle:hover {
+    -fx-background-color: rgba(255,255,255,0.1);
     -fx-text-fill: white;
 }
 
