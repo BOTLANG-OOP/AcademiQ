@@ -13,6 +13,7 @@ import com.academiq.model.TimeSlot;
 import com.academiq.persistence.SqliteDataStore;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
@@ -88,6 +89,11 @@ public class App extends Application {
     @Override
     public void start(Stage stage) {
         store = new SqliteDataStore();
+        if (store.hasConnectionError() || !store.isDatabaseHealthy()) {
+            if (!handleCorruptedDatabase()) {
+                return;
+            }
+        }
         Student loaded = store.loadStudent(DEFAULT_STUDENT_ID);
         if (loaded == null) {
             student = new Student("Student", DEFAULT_STUDENT_ID);
@@ -121,6 +127,29 @@ public class App extends Application {
         stage.setScene(scene);
         stage.setOnCloseRequest(e -> store.close());
         stage.show();
+    }
+
+    private boolean handleCorruptedDatabase() {
+        ButtonType startFresh = new ButtonType("Start Fresh", ButtonBar.ButtonData.OK_DONE);
+        ButtonType quit = new ButtonType("Quit", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Database Error");
+        alert.setHeaderText("AcademiQ could not read its data file.");
+        alert.setContentText("The database may be corrupted. Would you like to start fresh?\n"
+                + "(This will delete all saved data.)");
+        alert.getButtonTypes().setAll(startFresh, quit);
+        alert.getDialogPane().getStyleClass().add("aq-dialog");
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == startFresh) {
+            store.close();
+            SqliteDataStore.deleteDatabase("academiq.db");
+            store = new SqliteDataStore();
+            return true;
+        }
+        Platform.exit();
+        return false;
     }
 
     private VBox createSidebar() {

@@ -82,9 +82,24 @@ class SqliteDataStoreTest {
     }
 
     @Test
-    void testConstructorWithBadPathThrows() {
-        assertThrows(RuntimeException.class,
-            () -> new SqliteDataStore("/nonexistent/path/that/cannot/exist/db.db"));
+    void testConstructorWithBadPathReportsError() {
+        SqliteDataStore bad = new SqliteDataStore("/nonexistent/path/that/cannot/exist/db.db");
+        assertTrue(bad.hasConnectionError());
+        bad.close();
+    }
+
+    @Test
+    void testIsDatabaseHealthyOnCleanDb() {
+        assertTrue(store.isDatabaseHealthy());
+    }
+
+    @Test
+    void testHasConnectionErrorOnBadPath() {
+        SqliteDataStore bad = new SqliteDataStore("/dev/null/impossible/db.db");
+        assertTrue(bad.hasConnectionError());
+        assertNotNull(bad.getConnectionErrorMessage());
+        assertFalse(bad.getConnectionErrorMessage().isEmpty());
+        bad.close();
     }
 
     private Student buildSampleStudent() {
