@@ -362,7 +362,7 @@
 }
 
 /* ---------- Empty states ---------- */
-.empty-state-emoji { -fx-font-size: 40px; }
+.empty-state-icon { -fx-icon-color: -color-fg-muted; }
 .empty-state-title {
     -fx-font-size: 16px;
     -fx-font-weight: 600;

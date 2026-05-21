@@ -64,6 +64,9 @@ import javafx.animation.Timeline;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.feather.Feather;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -368,16 +371,14 @@ public class App extends Application {
         StackPane body = new StackPane();
         body.getStyleClass().add("courses-body");
 
-        Label emptyPrompt = new Label("Add a term to get started");
-        emptyPrompt.getStyleClass().add("empty-prompt");
+        Node emptyPrompt = createEmptyState(Feather.BOOK_OPEN, "No Terms Yet", "Create a term to start tracking your courses");
 
-        Label noTermSelected = new Label("Select a term to view courses");
-        noTermSelected.getStyleClass().add("empty-prompt");
+        Node noTermSelected = createEmptyState(Feather.CHEVRON_UP, "Select a Term", "Choose a term from the dropdown above");
 
         TableView<Course> courseTable = new TableView<>();
         courseTable.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
         courseTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        courseTable.setPlaceholder(new Label("No courses yet. Click 'Add Course' to begin"));
+        courseTable.setPlaceholder(createEmptyState(Feather.FOLDER, "No Courses", "Click 'Add Course' to begin"));
 
         TableColumn<Course, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getName()));
@@ -983,7 +984,7 @@ public class App extends Application {
         table.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setEditable(true);
-        table.setPlaceholder(new Label("No assessments yet. Click 'Add Assessment' to begin"));
+        table.setPlaceholder(createEmptyState(Feather.EDIT_3, "No Assessments", "Click 'Add Assessment' to begin"));
 
         TableColumn<Assessment, String> titleCol = new TableColumn<>("Title");
         titleCol.setCellValueFactory(cd -> new ReadOnlyStringWrapper(cd.getValue().getTitle()));
@@ -1085,8 +1086,7 @@ public class App extends Application {
         VBox tableSection = new VBox(12, tableAndBreakdown, buttonBar);
         VBox.setVgrow(tableAndBreakdown, Priority.ALWAYS);
 
-        Label noCourseSelected = new Label("Select a course to enter grades");
-        noCourseSelected.getStyleClass().add("empty-prompt");
+        Node noCourseSelected = createEmptyState(Feather.BAR_CHART_2, "Select a Course", "Pick a term and course to enter grades");
 
         StackPane body = new StackPane(noCourseSelected, tableSection);
         body.getStyleClass().add("courses-body");
@@ -1100,6 +1100,24 @@ public class App extends Application {
         pane.setPadding(new Insets(16));
         VBox.setVgrow(body, Priority.ALWAYS);
         return pane;
+    }
+
+    private static VBox createEmptyState(Feather icon, String title, String subtitle) {
+        FontIcon fontIcon = new FontIcon(icon);
+        fontIcon.setIconSize(40);
+        fontIcon.setIconColor(javafx.scene.paint.Color.web("#828282"));
+        fontIcon.getStyleClass().add("empty-state-icon");
+
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("empty-state-title");
+        Label subtitleLabel = new Label(subtitle);
+        subtitleLabel.getStyleClass().add("empty-state-subtitle");
+        subtitleLabel.setWrapText(true);
+
+        VBox box = new VBox(8, fontIcon, titleLabel, subtitleLabel);
+        box.setAlignment(javafx.geometry.Pos.CENTER);
+        box.setPadding(new javafx.geometry.Insets(40, 20, 40, 20));
+        return box;
     }
 
     private static Label makeErrorLabel(String text) {
@@ -1622,8 +1640,7 @@ public class App extends Application {
         Label termsHeader = new Label("Terms");
         termsHeader.getStyleClass().add("dashboard-subheader");
 
-        Label noTermsLabel = new Label("No terms yet. Add a term in Courses to see GPA breakdown.");
-        noTermsLabel.getStyleClass().add("empty-prompt");
+        Node noTermsLabel = createEmptyState(Feather.AWARD, "No Terms Yet", "Add a term in Courses to see your GPA");
         noTermsLabel.visibleProperty().bind(Bindings.isEmpty(student.getTerms()));
         noTermsLabel.managedProperty().bind(noTermsLabel.visibleProperty());
 
@@ -1663,8 +1680,7 @@ public class App extends Application {
         VBox courseCards = new VBox(8);
         courseCards.getStyleClass().add("dashboard-course-cards");
 
-        Label pickTermHint = new Label("Select a term above to view its courses");
-        pickTermHint.getStyleClass().add("empty-prompt");
+        Node pickTermHint = createEmptyState(Feather.LAYERS, "Select a Term", "Click a term card to see its courses");
 
         ScrollPane courseScroll = new ScrollPane(courseCards);
         courseScroll.setFitToWidth(true);
@@ -1836,11 +1852,9 @@ public class App extends Application {
         selectors.setAlignment(Pos.CENTER_LEFT);
         selectors.getStyleClass().add("term-controls");
 
-        Label noTermSelected = new Label("Select a term to manage schedules");
-        noTermSelected.getStyleClass().add("empty-prompt");
+        Node noTermSelected = createEmptyState(Feather.CALENDAR, "Select a Term", "Choose a term to manage schedules");
 
-        Label noCoursesLabel = new Label("No courses in this term");
-        noCoursesLabel.getStyleClass().add("empty-prompt");
+        Node noCoursesLabel = createEmptyState(Feather.FOLDER, "No Courses", "Add courses in the Courses tab first");
 
         VBox courseSections = new VBox(18);
         courseSections.getStyleClass().add("schedule-sections");
@@ -1971,7 +1985,7 @@ public class App extends Application {
         TableView<TimeSlot> table = new TableView<>(course.getTimeSlots());
         table.getStyleClass().addAll(Styles.BORDERED, Styles.STRIPED);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        table.setPlaceholder(new Label("No time slots yet"));
+        table.setPlaceholder(createEmptyState(Feather.CLOCK, "No Time Slots", "Click 'Add Time Slot' to begin"));
         table.setPrefHeight(180);
 
         TableColumn<TimeSlot, String> dayCol = new TableColumn<>("Day");
