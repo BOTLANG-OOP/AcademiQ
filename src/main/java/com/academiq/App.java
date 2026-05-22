@@ -650,7 +650,14 @@ public class App extends Application {
         grid.add(policyTypeCombo, 1, 6);
         grid.add(configArea, 0, 7, 2, 1);
 
-        dialog.getDialogPane().setContent(grid);
+        ScrollPane scroll = new ScrollPane(grid);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        scroll.setMaxHeight(560);
+        scroll.setPrefViewportHeight(560);
+        dialog.getDialogPane().setContent(scroll);
         if (contentArea.getScene() != null) {
             dialog.initOwner(contentArea.getScene().getWindow());
         }
