@@ -171,7 +171,7 @@ public class App extends Application {
         Region spacer = new Region();
         VBox.setVgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
 
-        Label version = new Label("v1.0-SNAPSHOT");
+        Label version = new Label("v1.0");
         version.getStyleClass().add("version-label");
 
         box.getChildren().addAll(title, separator, navButtons, spacer, version);
